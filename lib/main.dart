@@ -11,6 +11,7 @@ import 'package:ai_study_companion/features/notes/controllers/notes_controller.d
 import 'package:ai_study_companion/features/notes/controllers/ai_hub_controller.dart';
 import 'package:ai_study_companion/features/planner/controllers/planner_controller.dart';
 import 'package:ai_study_companion/features/progress/controllers/progress_controller.dart';
+import 'package:ai_study_companion/features/profile/controllers/profile_controller.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -57,6 +58,9 @@ class AIStudyCompanionApp extends StatelessWidget {
         ),
         ChangeNotifierProvider<ProgressController>(
           create: (ctx) => ProgressController(ctx.read<MockDatabaseService>()),
+        ),
+        ChangeNotifierProvider<ProfileController>(
+          create: (_) => ProfileController(),
         ),
       ],
       child: Builder(
