@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:ai_study_companion/core/theme/app_theme.dart';
 import 'package:ai_study_companion/core/router/app_router.dart';
-import 'package:ai_study_companion/services/mock_auth_service.dart';
-import 'package:ai_study_companion/services/mock_database_service.dart';
-import 'package:ai_study_companion/services/mock_gemini_service.dart';
+import 'package:ai_study_companion/core/db/database_helper.dart';
+import 'package:ai_study_companion/services/local_auth_service.dart';
+import 'package:ai_study_companion/services/local_file_service.dart';
+import 'package:ai_study_companion/services/gemini_service.dart';
 import 'package:ai_study_companion/features/auth/controllers/auth_controller.dart';
 import 'package:ai_study_companion/features/dashboard/controllers/dashboard_controller.dart';
 import 'package:ai_study_companion/features/notes/controllers/notes_controller.dart';
@@ -13,8 +15,15 @@ import 'package:ai_study_companion/features/planner/controllers/planner_controll
 import 'package:ai_study_companion/features/progress/controllers/progress_controller.dart';
 import 'package:ai_study_companion/features/profile/controllers/profile_controller.dart';
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Load environment variables
+  await dotenv.load(fileName: '.env');
+
+  // Initialize the database
+  await DatabaseHelper.instance.database;
+
   runApp(const AIStudyCompanionApp());
 }
 
@@ -30,34 +39,44 @@ class AIStudyCompanionApp extends StatelessWidget {
     return MultiProvider(
       providers: [
         // ── Services ───────────────────────────────────────────────
-        Provider<MockAuthService>(
-          create: (_) => MockAuthService(),
+        Provider<LocalAuthService>(
+          create: (_) => LocalAuthService(),
         ),
-        Provider<MockDatabaseService>(
-          create: (_) => MockDatabaseService(),
+        Provider<LocalFileService>(
+          create: (_) => LocalFileService(),
         ),
-        Provider<MockGeminiService>(
-          create: (_) => MockGeminiService(),
+        Provider<GeminiService>(
+          create: (_) => GeminiService(),
+        ),
+        Provider<DatabaseHelper>(
+          create: (_) => DatabaseHelper.instance,
         ),
 
         // ── Controllers ────────────────────────────────────────────
         ChangeNotifierProvider<AuthController>(
-          create: (ctx) => AuthController(ctx.read<MockAuthService>()),
+          create: (ctx) => AuthController(ctx.read<LocalAuthService>())
+            ..checkLoginStatus(),
         ),
         ChangeNotifierProvider<DashboardController>(
-          create: (ctx) => DashboardController(ctx.read<MockDatabaseService>()),
+          create: (ctx) => DashboardController(ctx.read<DatabaseHelper>()),
         ),
         ChangeNotifierProvider<NotesController>(
-          create: (ctx) => NotesController(ctx.read<MockDatabaseService>()),
+          create: (ctx) => NotesController(
+            ctx.read<DatabaseHelper>(),
+            ctx.read<LocalFileService>(),
+          ),
         ),
         ChangeNotifierProvider<AiHubController>(
-          create: (ctx) => AiHubController(ctx.read<MockGeminiService>()),
+          create: (ctx) => AiHubController(
+            ctx.read<GeminiService>(),
+            ctx.read<LocalFileService>(),
+          ),
         ),
         ChangeNotifierProvider<PlannerController>(
-          create: (ctx) => PlannerController(ctx.read<MockDatabaseService>()),
+          create: (ctx) => PlannerController(ctx.read<DatabaseHelper>()),
         ),
         ChangeNotifierProvider<ProgressController>(
-          create: (ctx) => ProgressController(ctx.read<MockDatabaseService>()),
+          create: (ctx) => ProgressController(ctx.read<DatabaseHelper>()),
         ),
         ChangeNotifierProvider<ProfileController>(
           create: (_) => ProfileController(),

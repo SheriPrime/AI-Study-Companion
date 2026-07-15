@@ -1,15 +1,18 @@
 import 'package:flutter/foundation.dart';
 import 'package:ai_study_companion/models/note.dart';
-import 'package:ai_study_companion/services/mock_database_service.dart';
+import 'package:ai_study_companion/core/db/database_helper.dart';
+import 'package:ai_study_companion/services/local_file_service.dart';
 
 /// Controller for the Notes screen.
 ///
 /// Manages note loading, subject-based filtering, and note uploads.
-/// Works with [MockDatabaseService] to simulate backend operations.
+/// Works with [DatabaseHelper] for SQLite persistence and
+/// [LocalFileService] for PDF file picking/copying.
 class NotesController extends ChangeNotifier {
-  final MockDatabaseService _databaseService;
+  final DatabaseHelper _dbHelper;
+  final LocalFileService _fileService;
 
-  NotesController(this._databaseService);
+  NotesController(this._dbHelper, this._fileService);
 
   // ---------------------------------------------------------------------------
   // State
@@ -50,36 +53,70 @@ class NotesController extends ChangeNotifier {
   // Actions
   // ---------------------------------------------------------------------------
 
-  /// Loads notes from the database service.
+  /// Loads notes from the SQLite database.
   Future<void> loadNotes() async {
     _isLoading = true;
     _errorMessage = null;
     notifyListeners();
 
     try {
-      _notes = List.from(await _databaseService.getNotes());
+      final rows = await _dbHelper.fetchNotes();
+      _notes = rows.map((row) => Note.fromMap(row)).toList();
     } catch (e) {
       _errorMessage = 'Failed to load notes. Please try again.';
+      debugPrint('NotesController.loadNotes error: $e');
     } finally {
       _isLoading = false;
       notifyListeners();
     }
   }
 
-  /// Uploads a new note and appends it to the list on success.
-  Future<bool> uploadNote(String title, String subject, String fileName) async {
+  /// Opens the file picker, copies the PDF to app storage, and saves the
+  /// note metadata to SQLite.
+  Future<bool> uploadNote(String title, String subject) async {
     _isUploading = true;
     _errorMessage = null;
     notifyListeners();
 
     try {
-      final note = await _databaseService.uploadNote(title, subject, fileName);
-      _notes.insert(0, note);
+      // 1. Pick file
+      final pickedFile = await _fileService.pickPDFFile();
+      if (pickedFile == null) {
+        // User cancelled
+        _isUploading = false;
+        notifyListeners();
+        return false;
+      }
+
+      // 2. Copy to app directory
+      final localPath = await _fileService.copyToAppDirectory(pickedFile);
+
+      // 3. Save to SQLite
+      final note = Note(
+        title: title,
+        subject: subject,
+        localFilePath: localPath,
+        dateAdded: DateTime.now(),
+      );
+
+      final id = await _dbHelper.insertNote(note.toMap());
+
+      // 4. Add to local list with the auto-generated id
+      final savedNote = Note(
+        id: id,
+        title: note.title,
+        subject: note.subject,
+        localFilePath: note.localFilePath,
+        dateAdded: note.dateAdded,
+      );
+      _notes.insert(0, savedNote);
+
       _isUploading = false;
       notifyListeners();
       return true;
     } catch (e) {
       _errorMessage = 'Upload failed. Please try again.';
+      debugPrint('NotesController.uploadNote error: $e');
       _isUploading = false;
       notifyListeners();
       return false;

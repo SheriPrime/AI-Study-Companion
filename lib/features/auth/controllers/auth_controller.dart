@@ -1,13 +1,13 @@
 import 'package:flutter/foundation.dart';
 import 'package:ai_study_companion/models/user.dart';
-import 'package:ai_study_companion/services/mock_auth_service.dart';
+import 'package:ai_study_companion/services/local_auth_service.dart';
 
 /// Controls authentication state for login, signup, and logout flows.
 ///
-/// Wraps [MockAuthService] and exposes reactive properties via
+/// Wraps [LocalAuthService] and exposes reactive properties via
 /// [ChangeNotifier] so the UI can rebuild on state changes.
 class AuthController extends ChangeNotifier {
-  final MockAuthService _authService;
+  final LocalAuthService _authService;
 
   AuthController(this._authService);
 
@@ -30,7 +30,22 @@ class AuthController extends ChangeNotifier {
   // Actions
   // ---------------------------------------------------------------------------
 
-  /// Attempts to log the user in with the provided [email] and [password].
+  /// Checks if a user is already logged in (called on app startup).
+  Future<void> checkLoginStatus() async {
+    _isLoading = true;
+    notifyListeners();
+
+    try {
+      _currentUser = await _authService.getCurrentUser();
+    } catch (e) {
+      debugPrint('AuthController.checkLoginStatus error: $e');
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  /// Logs in the user with the provided [name] and [rollNumber].
   ///
   /// Sets [isLoading] while the request is in-flight.
   /// On success, [currentUser] is populated and [isLoggedIn] becomes `true`.
@@ -40,6 +55,7 @@ class AuthController extends ChangeNotifier {
     _clearError();
 
     try {
+      // Use email as name, password as rollNumber for local auth
       _currentUser = await _authService.login(email, password);
     } catch (e) {
       _errorMessage = 'Login failed. Please check your credentials.';
@@ -50,13 +66,13 @@ class AuthController extends ChangeNotifier {
 
   /// Creates a new account with the given [name], [email], and [password].
   ///
-  /// Follows the same loading / error contract as [login].
+  /// For local auth, we use name and email (as rollNumber).
   Future<void> signup(String name, String email, String password) async {
     _setLoading(true);
     _clearError();
 
     try {
-      _currentUser = await _authService.signup(name, email, password);
+      _currentUser = await _authService.login(name, email);
     } catch (e) {
       _errorMessage = 'Signup failed. Please try again later.';
     } finally {
@@ -65,8 +81,8 @@ class AuthController extends ChangeNotifier {
   }
 
   /// Signs the current user out and resets controller state.
-  void logout() {
-    _authService.logout();
+  Future<void> logout() async {
+    await _authService.logout();
     _currentUser = null;
     _errorMessage = null;
     notifyListeners();

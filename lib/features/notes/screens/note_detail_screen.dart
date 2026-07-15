@@ -88,10 +88,11 @@ class _NoteDetailScreenState extends State<NoteDetailScreen>
                 const SizedBox(height: 24),
 
                 // ── Action buttons ────────────────────────────────────
-                _ActionButtonRow(
-                  noteId: widget.noteId,
-                  controller: controller,
-                ),
+                if (note != null)
+                  _ActionButtonRow(
+                    localFilePath: note.localFilePath,
+                    controller: controller,
+                  ),
                 const SizedBox(height: 24),
 
                 // ── Error message ─────────────────────────────────────
@@ -208,7 +209,7 @@ class _NoteInfoCard extends StatelessWidget {
                     const SizedBox(width: 4),
                     Flexible(
                       child: Text(
-                        '${note.fileName}  •  ${note.pageCount} pages',
+                        note.fileName,
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
                               color: AppColors.textSecondary,
                             ),
@@ -232,11 +233,11 @@ class _NoteInfoCard extends StatelessWidget {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 class _ActionButtonRow extends StatelessWidget {
-  final String noteId;
+  final String localFilePath;
   final AiHubController controller;
 
   const _ActionButtonRow({
-    required this.noteId,
+    required this.localFilePath,
     required this.controller,
   });
 
@@ -252,7 +253,7 @@ class _ActionButtonRow extends StatelessWidget {
             isLoading: controller.isGeneratingSummary,
             onTap: controller.isGeneratingSummary || controller.isGeneratingQuiz
                 ? null
-                : () => controller.generateSummary(noteId),
+                : () => controller.generateSummary(localFilePath),
           ),
         ),
         const SizedBox(width: 12),
@@ -264,7 +265,7 @@ class _ActionButtonRow extends StatelessWidget {
             isLoading: controller.isGeneratingQuiz,
             onTap: controller.isGeneratingSummary || controller.isGeneratingQuiz
                 ? null
-                : () => controller.generateQuiz(noteId),
+                : () => controller.generateQuiz(localFilePath),
           ),
         ),
       ],

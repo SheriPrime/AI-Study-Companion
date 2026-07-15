@@ -227,7 +227,6 @@ class _NotesScreenState extends State<NotesScreen> {
                                     final success = await ctrl.uploadNote(
                                       titleController.text.trim(),
                                       selectedSubject!,
-                                      '${titleController.text.trim().toLowerCase().replaceAll(' ', '_')}.pdf',
                                     );
                                     if (!ctx.mounted) return;
                                     if (success) {
@@ -368,7 +367,7 @@ class _NoteCard extends StatelessWidget {
                         const SizedBox(width: 8),
                         Flexible(
                           child: Text(
-                            '${note.fileName}  •  ${note.pageCount} pages',
+                            note.fileName,
                             style: Theme.of(context).textTheme.bodySmall?.copyWith(
                                   color: AppColors.textSecondary,
                                   fontSize: 11,

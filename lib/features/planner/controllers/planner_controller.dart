@@ -1,15 +1,15 @@
 import 'package:flutter/foundation.dart';
 import 'package:ai_study_companion/models/study_task.dart';
-import 'package:ai_study_companion/services/mock_database_service.dart';
+import 'package:ai_study_companion/core/db/database_helper.dart';
 
 /// Controller for the Study Planner feature.
 ///
 /// Manages loading, adding, and toggling [StudyTask] items via
-/// [MockDatabaseService]. Exposes filtered getters for UI sections.
+/// [DatabaseHelper]. Exposes filtered getters for UI sections.
 class PlannerController extends ChangeNotifier {
-  final MockDatabaseService _databaseService;
+  final DatabaseHelper _dbHelper;
 
-  PlannerController(this._databaseService);
+  PlannerController(this._dbHelper);
 
   // ---------------------------------------------------------------------------
   // State
@@ -47,52 +47,57 @@ class PlannerController extends ChangeNotifier {
   // Actions
   // ---------------------------------------------------------------------------
 
-  /// Loads all tasks from the mock service and sorts by date ascending.
+  /// Loads all tasks from the SQLite database and sorts by date ascending.
   Future<void> loadTasks() async {
     _isLoading = true;
     _errorMessage = null;
     notifyListeners();
 
     try {
-      final loaded = await _databaseService.getTasks();
-      loaded.sort((a, b) => a.date.compareTo(b.date));
-      _tasks = loaded;
+      final rows = await _dbHelper.fetchTasks();
+      _tasks = rows.map((row) => StudyTask.fromMap(row)).toList();
+      _tasks.sort((a, b) => a.date.compareTo(b.date));
     } catch (e) {
       _errorMessage = 'Failed to load tasks. Please try again.';
+      debugPrint('PlannerController.loadTasks error: $e');
     } finally {
       _isLoading = false;
       notifyListeners();
     }
   }
 
-  /// Adds a new [StudyTask] via the mock service and refreshes the list.
+  /// Adds a new [StudyTask] to the SQLite database and refreshes the list.
   Future<void> addTask(StudyTask task) async {
     _isAddingTask = true;
     notifyListeners();
 
     try {
-      await _databaseService.addTask(task);
-      _tasks.add(task);
+      final id = await _dbHelper.insertTask(task.toMap());
+      final savedTask = task.copyWith(id: id);
+      _tasks.add(savedTask);
       _tasks.sort((a, b) => a.date.compareTo(b.date));
       _errorMessage = null;
     } catch (e) {
       _errorMessage = 'Failed to add task. Please try again.';
+      debugPrint('PlannerController.addTask error: $e');
     } finally {
       _isAddingTask = false;
       notifyListeners();
     }
   }
 
-  /// Toggles a task between pending ↔ done via the mock service.
-  Future<void> toggleTask(String id) async {
+  /// Toggles a task between pending ↔ done via SQLite.
+  Future<void> toggleTask(int id) async {
     try {
-      await _databaseService.toggleTaskStatus(id);
       final index = _tasks.indexWhere((t) => t.id == id);
       if (index != -1) {
         final task = _tasks[index];
-        task.status = task.status == TaskStatus.done
+        final newStatus = task.status == TaskStatus.done
             ? TaskStatus.pending
             : TaskStatus.done;
+        final statusStr = newStatus == TaskStatus.done ? 'Done' : 'Pending';
+        await _dbHelper.updateTaskStatus(id, statusStr);
+        task.status = newStatus;
         notifyListeners();
       }
     } catch (e) {

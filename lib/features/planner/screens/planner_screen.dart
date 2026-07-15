@@ -219,7 +219,6 @@ class _PlannerScreenState extends State<PlannerScreen> {
     if (!formKey.currentState!.validate()) return;
 
     final task = StudyTask(
-      id: 'task_${DateTime.now().millisecondsSinceEpoch}',
       title: titleCtrl.text.trim(),
       description:
           descCtrl.text.trim().isNotEmpty ? descCtrl.text.trim() : null,
@@ -473,7 +472,11 @@ class _TaskCard extends StatelessWidget {
                         ),
                       )
                     : IconButton(
-                        onPressed: () => controller.toggleTask(task.id),
+                        onPressed: () {
+                          if (task.id != null) {
+                            controller.toggleTask(task.id!);
+                          }
+                        },
                         icon: Icon(
                           isDone
                               ? Icons.check_circle_rounded
