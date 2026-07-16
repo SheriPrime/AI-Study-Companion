@@ -10,6 +10,7 @@ import 'package:ai_study_companion/models/note.dart';
 import 'package:ai_study_companion/models/summary.dart';
 import 'package:ai_study_companion/models/quiz.dart';
 import 'package:ai_study_companion/features/notes/controllers/ai_hub_controller.dart';
+import 'package:ai_study_companion/features/notes/controllers/notes_controller.dart';
 
 /// AI Hub — the detail screen for a single note.
 ///
@@ -58,7 +59,14 @@ class _NoteDetailScreenState extends State<NoteDetailScreen>
 
   @override
   Widget build(BuildContext context) {
-    final note = widget.note;
+    Note? note = widget.note;
+    if (note == null) {
+      try {
+        note = context.read<NotesController>().notes.firstWhere(
+              (n) => n.id.toString() == widget.noteId,
+            );
+      } catch (_) {}
+    }
 
     return Scaffold(
       backgroundColor: AppColors.surface,
@@ -78,21 +86,36 @@ class _NoteDetailScreenState extends State<NoteDetailScreen>
       ),
       body: Consumer<AiHubController>(
         builder: (context, controller, _) {
+          if (note == null) {
+            return const Center(
+              child: Padding(
+                padding: EdgeInsets.all(32),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    CircularProgressIndicator(),
+                    SizedBox(height: 16),
+                    Text('Loading note details...'),
+                  ],
+                ),
+              ),
+            );
+          }
+
           return SingleChildScrollView(
             padding: const EdgeInsets.fromLTRB(20, 8, 20, 40),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // ── Note info card ────────────────────────────────────
-                if (note != null) _NoteInfoCard(note: note),
+                _NoteInfoCard(note: note),
                 const SizedBox(height: 24),
 
                 // ── Action buttons ────────────────────────────────────
-                if (note != null)
-                  _ActionButtonRow(
-                    localFilePath: note.localFilePath,
-                    controller: controller,
-                  ),
+                _ActionButtonRow(
+                  localFilePath: note.localFilePath,
+                  controller: controller,
+                ),
                 const SizedBox(height: 24),
 
                 // ── Error message ─────────────────────────────────────

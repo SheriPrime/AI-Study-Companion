@@ -28,7 +28,7 @@ class GeminiService {
     }
 
     _model = GenerativeModel(
-      model: 'gemini-1.5-flash',
+      model: 'gemini-3.1-flash-lite',
       apiKey: apiKey,
     );
     _initialized = true;
@@ -67,6 +67,13 @@ $extractedText
     } on AIException {
       rethrow;
     } catch (e) {
+      final msg = e.toString();
+      if (msg.contains('not found for API') || msg.contains('API key') || msg.contains('invalid')) {
+        throw const AIException(
+          'Your Gemini API key appears to be invalid, restricted, or unauthorized. '
+          'Please ensure you are using a standard Gemini API key from Google AI Studio (typically starting with "AIzaSy") inside your .env file.'
+        );
+      }
       throw AIException(
         'Failed to generate summary. Please check your internet connection. Error: $e',
       );
@@ -125,6 +132,13 @@ $extractedText
         'Failed to parse quiz response. The AI returned an unexpected format.',
       );
     } catch (e) {
+      final msg = e.toString();
+      if (msg.contains('not found for API') || msg.contains('API key') || msg.contains('invalid')) {
+        throw const AIException(
+          'Your Gemini API key appears to be invalid, restricted, or unauthorized. '
+          'Please ensure you are using a standard Gemini API key from Google AI Studio (typically starting with "AIzaSy") inside your .env file.'
+        );
+      }
       throw AIException(
         'Failed to generate quiz. Please check your internet connection. Error: $e',
       );

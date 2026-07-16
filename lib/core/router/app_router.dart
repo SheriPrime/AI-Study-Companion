@@ -11,6 +11,7 @@ import 'package:ai_study_companion/features/planner/screens/planner_screen.dart'
 import 'package:ai_study_companion/features/progress/screens/progress_screen.dart';
 import 'package:ai_study_companion/features/profile/screens/profile_screen.dart';
 import 'package:ai_study_companion/features/shell/shell_screen.dart';
+import 'package:ai_study_companion/models/note.dart';
 
 /// Creates and configures the application's [GoRouter].
 ///
@@ -75,7 +76,8 @@ GoRouter createRouter(AuthController authController) {
                 path: ':noteId',
                 builder: (context, state) {
                   final noteId = state.pathParameters['noteId']!;
-                  return NoteDetailScreen(noteId: noteId);
+                  final note = state.extra as Note?;
+                  return NoteDetailScreen(noteId: noteId, note: note);
                 },
               ),
             ],
