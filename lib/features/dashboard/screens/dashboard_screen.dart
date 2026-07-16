@@ -227,6 +227,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     DashboardController controller,
   ) {
     final stats = controller.stats;
+    final totalHours = stats?.weeklyData.fold<double>(0.0, (sum, item) => sum + item.hours) ?? 0.0;
 
     return GridView.count(
       crossAxisCount: 2,
@@ -256,7 +257,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         ),
         StatCard(
           title: 'Hours',
-          value: '18.1',
+          value: totalHours > 0.0 ? totalHours.toStringAsFixed(1) : '0.0',
           icon: Icons.timer_outlined,
           color: AppColors.plannerBlue,
         ),

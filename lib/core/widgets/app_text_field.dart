@@ -14,6 +14,8 @@ class AppTextField extends StatelessWidget {
   final TextInputAction? textInputAction;
   final ValueChanged<String>? onFieldSubmitted;
   final bool enabled;
+  final ValueChanged<String>? onChanged;
+  final bool autofocus;
 
   const AppTextField({
     super.key,
@@ -28,6 +30,8 @@ class AppTextField extends StatelessWidget {
     this.textInputAction,
     this.onFieldSubmitted,
     this.enabled = true,
+    this.onChanged,
+    this.autofocus = false,
   });
 
   @override
@@ -40,6 +44,8 @@ class AppTextField extends StatelessWidget {
       textInputAction: textInputAction,
       onFieldSubmitted: onFieldSubmitted,
       enabled: enabled,
+      onChanged: onChanged,
+      autofocus: autofocus,
       style: Theme.of(context).textTheme.bodyLarge,
       decoration: InputDecoration(
         labelText: label,

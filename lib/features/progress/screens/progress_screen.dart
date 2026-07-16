@@ -341,9 +341,9 @@ class _ProgressScreenState extends State<ProgressScreen> {
             text: 'Total quizzes taken: ${stats.quizzesTaken}',
           ),
           const SizedBox(height: 12),
-          const _InsightRow(
+          _InsightRow(
             emoji: '📚',
-            text: 'Most studied subject: AI',
+            text: 'Most studied subject: ${_getMostStudiedSubject(stats)}',
           ),
           const SizedBox(height: 12),
           _InsightRow(
@@ -353,6 +353,13 @@ class _ProgressScreenState extends State<ProgressScreen> {
         ],
       ),
     );
+  }
+
+  String _getMostStudiedSubject(StudyStats stats) {
+    if (stats.subjectDistribution.isEmpty) return 'None';
+    final sorted = List<SubjectDistribution>.from(stats.subjectDistribution)
+      ..sort((a, b) => b.count.compareTo(a.count));
+    return sorted.first.subject;
   }
 }
 

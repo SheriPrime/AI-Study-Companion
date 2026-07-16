@@ -82,8 +82,8 @@ class AiHubController extends ChangeNotifier {
     notifyListeners();
 
     try {
-      // Extract text from PDF
-      final extractedText = await _fileService.extractTextFromPDF(localFilePath);
+      // Extract text from file
+      final extractedText = await _fileService.extractText(localFilePath);
 
       // Generate summary via Gemini
       final markdown = await _geminiService.generateSummary(extractedText);
@@ -115,8 +115,8 @@ class AiHubController extends ChangeNotifier {
     notifyListeners();
 
     try {
-      // Extract text from PDF
-      final extractedText = await _fileService.extractTextFromPDF(localFilePath);
+      // Extract text from file
+      final extractedText = await _fileService.extractText(localFilePath);
 
       // Generate quiz via Gemini
       final questions = await _geminiService.generateQuiz(extractedText);

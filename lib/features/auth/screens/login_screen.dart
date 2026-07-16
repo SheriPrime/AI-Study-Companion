@@ -120,6 +120,8 @@ class _LoginScreenState extends State<LoginScreen>
 
   @override
   Widget build(BuildContext context) {
+    final isFallback = context.read<AuthController>().isFallbackMode;
+
     return Scaffold(
       backgroundColor: AppColors.surface,
       body: SafeArea(
@@ -131,6 +133,10 @@ class _LoginScreenState extends State<LoginScreen>
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
+                  if (isFallback) ...[
+                    _buildFallbackBanner(),
+                    const SizedBox(height: 16),
+                  ],
                   _buildLogoArea(),
                   const SizedBox(height: 48),
                   _buildForm(),
@@ -272,6 +278,34 @@ class _LoginScreenState extends State<LoginScreen>
           ),
         ),
       ],
+    );
+  }
+
+  /// Banner indicating the app is operating in local/offline fallback mode.
+  Widget _buildFallbackBanner() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: AppColors.warning.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.warning.withValues(alpha: 0.4)),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.wifi_off_rounded, color: AppColors.warning, size: 20),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              'Firebase is not linked. Running in Developer Fallback Mode (offline local database).',
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: AppColors.textPrimary,
+                    fontWeight: FontWeight.w600,
+                  ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

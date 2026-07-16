@@ -1,15 +1,16 @@
 import 'package:flutter/foundation.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:ai_study_companion/models/study_task.dart';
-import 'package:ai_study_companion/core/db/database_helper.dart';
+import 'package:ai_study_companion/services/firestore_service.dart';
 
 /// Controller for the Study Planner feature.
 ///
-/// Manages loading, adding, and toggling [StudyTask] items via
-/// [DatabaseHelper]. Exposes filtered getters for UI sections.
+/// Manages loading, adding, and toggling [StudyTask] items via [FirestoreService].
 class PlannerController extends ChangeNotifier {
-  final DatabaseHelper _dbHelper;
+  final FirestoreService _firestoreService;
 
-  PlannerController(this._dbHelper);
+  PlannerController(this._firestoreService);
 
   // ---------------------------------------------------------------------------
   // State
@@ -47,15 +48,22 @@ class PlannerController extends ChangeNotifier {
   // Actions
   // ---------------------------------------------------------------------------
 
-  /// Loads all tasks from the SQLite database and sorts by date ascending.
+  /// Loads all tasks from the Firestore database and sorts by date ascending.
   Future<void> loadTasks() async {
+    final prefs = await SharedPreferences.getInstance();
+    final uid = FirebaseAuth.instance.currentUser?.uid ?? prefs.getString('local_userUid');
+    if (uid == null) {
+      _errorMessage = 'No user logged in.';
+      notifyListeners();
+      return;
+    }
+
     _isLoading = true;
     _errorMessage = null;
     notifyListeners();
 
     try {
-      final rows = await _dbHelper.fetchTasks();
-      _tasks = rows.map((row) => StudyTask.fromMap(row)).toList();
+      _tasks = await _firestoreService.fetchTasks(uid);
       _tasks.sort((a, b) => a.date.compareTo(b.date));
     } catch (e) {
       _errorMessage = 'Failed to load tasks. Please try again.';
@@ -66,14 +74,18 @@ class PlannerController extends ChangeNotifier {
     }
   }
 
-  /// Adds a new [StudyTask] to the SQLite database and refreshes the list.
+  /// Adds a new [StudyTask] to Firestore and refreshes the local list.
   Future<void> addTask(StudyTask task) async {
+    final prefs = await SharedPreferences.getInstance();
+    final uid = FirebaseAuth.instance.currentUser?.uid ?? prefs.getString('local_userUid');
+    if (uid == null) return;
+
     _isAddingTask = true;
     notifyListeners();
 
     try {
-      final id = await _dbHelper.insertTask(task.toMap());
-      final savedTask = task.copyWith(id: id);
+      final generatedId = await _firestoreService.insertTask(uid, task);
+      final savedTask = task.copyWith(id: generatedId);
       _tasks.add(savedTask);
       _tasks.sort((a, b) => a.date.compareTo(b.date));
       _errorMessage = null;
@@ -86,8 +98,12 @@ class PlannerController extends ChangeNotifier {
     }
   }
 
-  /// Toggles a task between pending ↔ done via SQLite.
+  /// Toggles a task status in Firestore and updates the local state.
   Future<void> toggleTask(int id) async {
+    final prefs = await SharedPreferences.getInstance();
+    final uid = FirebaseAuth.instance.currentUser?.uid ?? prefs.getString('local_userUid');
+    if (uid == null) return;
+
     try {
       final index = _tasks.indexWhere((t) => t.id == id);
       if (index != -1) {
@@ -96,7 +112,8 @@ class PlannerController extends ChangeNotifier {
             ? TaskStatus.pending
             : TaskStatus.done;
         final statusStr = newStatus == TaskStatus.done ? 'Done' : 'Pending';
-        await _dbHelper.updateTaskStatus(id, statusStr);
+
+        await _firestoreService.updateTaskStatus(uid, task.title, task.date, statusStr);
         task.status = newStatus;
         notifyListeners();
       }

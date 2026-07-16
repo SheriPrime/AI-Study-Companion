@@ -117,6 +117,7 @@ class _PlannerScreenState extends State<PlannerScreen> {
                           label: 'Task Title',
                           controller: titleController,
                           prefixIcon: Icons.task_alt,
+                          onChanged: (text) => setDialogState(() {}),
                           validator: (value) {
                             if (value == null || value.trim().isEmpty) {
                               return 'Please enter a task title';
