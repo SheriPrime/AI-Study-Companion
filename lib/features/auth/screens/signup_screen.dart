@@ -53,7 +53,10 @@ class _SignupScreenState extends State<SignupScreen>
 
     _nameController.addListener(_validateForm);
     _emailController.addListener(_validateForm);
-    _passwordController.addListener(_validateForm);
+    _passwordController.addListener(() {
+      setState(() {});
+      _validateForm();
+    });
     _confirmPasswordController.addListener(_validateForm);
   }
 
@@ -81,6 +84,9 @@ class _SignupScreenState extends State<SignupScreen>
   String? _validateName(String? value) {
     if (value == null || value.trim().isEmpty) return 'Name is required';
     if (value.trim().length < 2) return 'Name is too short';
+    if (RegExp(r'[0-9]').hasMatch(value)) {
+      return 'Numbers are not allowed in the name';
+    }
     return null;
   }
 
@@ -93,7 +99,11 @@ class _SignupScreenState extends State<SignupScreen>
 
   String? _validatePassword(String? value) {
     if (value == null || value.isEmpty) return 'Password is required';
-    if (value.length < 6) return 'Must be at least 6 characters';
+    if (value.length < 8) return 'Must be at least 8 characters';
+    if (!RegExp(r'[A-Z]').hasMatch(value)) return 'Must contain at least one uppercase letter';
+    if (!RegExp(r'[a-z]').hasMatch(value)) return 'Must contain at least one lowercase letter';
+    if (!RegExp(r'[0-9]').hasMatch(value)) return 'Must contain at least one number';
+    if (!RegExp(r'[!@#\$%^&*(),.?":{}|<>]').hasMatch(value)) return 'Must contain at least one special character';
     return null;
   }
 
@@ -101,6 +111,19 @@ class _SignupScreenState extends State<SignupScreen>
     if (value == null || value.isEmpty) return 'Please confirm your password';
     if (value != _passwordController.text) return 'Passwords do not match';
     return null;
+  }
+
+  double _calculatePasswordStrength(String password) {
+    if (password.isEmpty) return 0.0;
+    
+    double strength = 0.0;
+    if (password.length >= 8) strength += 0.2;
+    if (RegExp(r'[A-Z]').hasMatch(password)) strength += 0.2;
+    if (RegExp(r'[a-z]').hasMatch(password)) strength += 0.2;
+    if (RegExp(r'[0-9]').hasMatch(password)) strength += 0.2;
+    if (RegExp(r'[!@#\$%^&*(),.?":{}|<>]').hasMatch(password)) strength += 0.2;
+    
+    return strength;
   }
 
   // -------------------------------------------------------------------------
@@ -275,6 +298,7 @@ class _SignupScreenState extends State<SignupScreen>
                   setState(() => _obscurePassword = !_obscurePassword),
             ),
           ),
+          _buildPasswordStrengthMeter(),
           const SizedBox(height: 20),
 
           // Confirm Password
@@ -340,6 +364,93 @@ class _SignupScreenState extends State<SignupScreen>
           ),
         ),
       ],
+    );
+  }
+
+  /// Visual indicator for password complexity rules met.
+  Widget _buildPasswordStrengthMeter() {
+    final password = _passwordController.text;
+    if (password.isEmpty) return const SizedBox.shrink();
+
+    final strength = _calculatePasswordStrength(password);
+    Color color;
+    String label;
+    
+    if (strength <= 0.4) {
+      color = AppColors.error;
+      label = 'Weak Password';
+    } else if (strength <= 0.8) {
+      color = AppColors.warning;
+      label = 'Medium Password';
+    } else {
+      color = AppColors.success;
+      label = 'Strong Password';
+    }
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 8, left: 4, right: 4),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Password Strength:',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: AppColors.textSecondary,
+                    ),
+              ),
+              Text(
+                label,
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: color,
+                      fontWeight: FontWeight.w600,
+                    ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(4),
+            child: LinearProgressIndicator(
+              value: strength,
+              backgroundColor: AppColors.divider,
+              valueColor: AlwaysStoppedAnimation<Color>(color),
+              minHeight: 6,
+            ),
+          ),
+          const SizedBox(height: 8),
+          _buildRequirementRow('At least 8 characters', password.length >= 8),
+          _buildRequirementRow('One uppercase & one lowercase letter',
+              RegExp(r'[A-Z]').hasMatch(password) && RegExp(r'[a-z]').hasMatch(password)),
+          _buildRequirementRow('One number & one special character',
+              RegExp(r'[0-9]').hasMatch(password) && RegExp(r'[!@#\$%^&*(),.?":{}|<>]').hasMatch(password)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRequirementRow(String text, bool isMet) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 2),
+      child: Row(
+        children: [
+          Icon(
+            isMet ? Icons.check_circle_rounded : Icons.radio_button_unchecked_rounded,
+            size: 14,
+            color: isMet ? AppColors.success : AppColors.textHint,
+          ),
+          const SizedBox(width: 8),
+          Text(
+            text,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: isMet ? AppColors.textPrimary : AppColors.textSecondary,
+                  fontSize: 11,
+                ),
+          ),
+        ],
+      ),
     );
   }
 }
