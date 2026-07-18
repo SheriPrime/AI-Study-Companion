@@ -34,9 +34,9 @@ class FirebaseAuthService {
         id: prefs.getString(_keyUid) ?? 'offline_uid',
         name: prefs.getString(_keyName) ?? 'Student',
         email: prefs.getString(_keyEmail) ?? 'offline@example.com',
-        university: 'COMSATS University Islamabad (Offline)',
-        department: 'BSCS',
-        timeline: '2023–2027',
+        university: prefs.getString('local_university') ?? 'COMSATS University Islamabad (Offline)',
+        department: prefs.getString('local_department') ?? 'BSCS',
+        timeline: prefs.getString('local_timeline') ?? '2023–2027',
       );
     }
 
@@ -131,21 +131,31 @@ class FirebaseAuthService {
   }
 
   /// Registers a new user account, using fallback local storage if in placeholder mode.
-  Future<AppUser> signup(String name, String email, String password) async {
+  Future<AppUser> signup({
+    required String name,
+    required String email,
+    required String university,
+    required String department,
+    required String timeline,
+    required String password,
+  }) async {
     if (isFallbackMode) {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setBool(_keyIsLoggedIn, true);
       await prefs.setString(_keyName, name);
       await prefs.setString(_keyEmail, email);
+      await prefs.setString('local_university', university);
+      await prefs.setString('local_department', department);
+      await prefs.setString('local_timeline', timeline);
       await prefs.setString(_keyUid, 'offline_user_${name.hashCode}');
 
       return AppUser(
         id: 'offline_user_${name.hashCode}',
         name: name,
         email: email,
-        university: 'COMSATS University Islamabad (Offline)',
-        department: 'BSCS',
-        timeline: '2023–2027',
+        university: university,
+        department: department,
+        timeline: timeline,
       );
     }
 
@@ -165,18 +175,18 @@ class FirebaseAuthService {
       await _firestoreService.createUserProfile(
         uid: firebaseUser.uid,
         name: name,
-        university: 'COMSATS University Islamabad',
-        department: 'BSCS',
-        timeline: '2023–2027',
+        university: university,
+        department: department,
+        timeline: timeline,
       );
 
       return AppUser(
         id: firebaseUser.uid,
         name: name,
         email: email,
-        university: 'COMSATS University Islamabad',
-        department: 'BSCS',
-        timeline: '2023–2027',
+        university: university,
+        department: department,
+        timeline: timeline,
       );
     } on FirebaseAuthException catch (e) {
       String message = 'Sign up failed.';
@@ -191,6 +201,24 @@ class FirebaseAuthService {
     } catch (e) {
       throw Exception('An unexpected error occurred during registration.');
     }
+  }
+
+  /// Creates or updates a user profile collection document in Firestore.
+  Future<void> createUserProfile({
+    required String uid,
+    required String name,
+    required String university,
+    required String department,
+    required String timeline,
+  }) async {
+    if (isFallbackMode) return;
+    await _firestoreService.createUserProfile(
+      uid: uid,
+      name: name,
+      university: university,
+      department: department,
+      timeline: timeline,
+    );
   }
 
   /// Signs the current user out.

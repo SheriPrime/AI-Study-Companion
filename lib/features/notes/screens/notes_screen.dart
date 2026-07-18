@@ -350,6 +350,7 @@ class _NotesScreenState extends State<NotesScreen> {
         return StatefulBuilder(
           builder: (ctx, setDialogState) {
             return AlertDialog(
+              actionsAlignment: MainAxisAlignment.center,
               title: const Text('Add New Course'),
               content: Form(
                 key: formKey,
@@ -561,17 +562,82 @@ class _NoteCard extends StatelessWidget {
                 ),
               ),
 
-              // Date
-              Text(
-                dateFormatted,
-                style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                      color: AppColors.textHint,
+              // Date & Delete Action
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text(
+                    dateFormatted,
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                          color: AppColors.textHint,
+                        ),
+                  ),
+                  const SizedBox(height: 8),
+                  IconButton(
+                    icon: const Icon(
+                      Icons.delete_outline_rounded,
+                      color: AppColors.error,
+                      size: 20,
                     ),
+                    splashRadius: 20,
+                    constraints: const BoxConstraints(),
+                    padding: EdgeInsets.zero,
+                    onPressed: () => _confirmDelete(context, note),
+                  ),
+                ],
               ),
             ],
           ),
         ),
       ),
+    );
+  }
+
+  void _confirmDelete(BuildContext context, Note note) {
+    showDialog<void>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          actionsAlignment: MainAxisAlignment.center,
+          title: const Text('Delete Note'),
+          content: Text('Are you sure you want to delete "${note.title}"? This will permanently remove the note and all associated files.'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                Navigator.of(dialogContext).pop();
+                final success = await context.read<NotesController>().deleteNote(note.id!);
+                if (!context.mounted) return;
+                if (success) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('"${note.title}" deleted successfully.'),
+                      backgroundColor: AppColors.success,
+                      behavior: SnackBarBehavior.floating,
+                    ),
+                  );
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Failed to delete note.'),
+                      backgroundColor: AppColors.error,
+                      behavior: SnackBarBehavior.floating,
+                    ),
+                  );
+                }
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.error,
+                foregroundColor: Colors.white,
+              ),
+              child: const Text('Delete'),
+            ),
+          ],
+        );
+      },
     );
   }
 }

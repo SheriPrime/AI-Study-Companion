@@ -144,6 +144,37 @@ class NotesController extends ChangeNotifier {
     }
   }
 
+  /// Deletes a note from SQLite database and updates local state.
+  Future<bool> deleteNote(int id) async {
+    try {
+      final index = _notes.indexWhere((n) => n.id == id);
+      if (index != -1) {
+        final note = _notes[index];
+        // Delete SQLite record
+        await _dbHelper.deleteNote(id);
+        
+        // Try deleting local file
+        try {
+          final file = File(note.localFilePath);
+          if (await file.exists()) {
+            await file.delete();
+          }
+        } catch (e) {
+          debugPrint('Failed to delete physical file: $e');
+        }
+
+        _notes.removeAt(index);
+        notifyListeners();
+        return true;
+      }
+      return false;
+    } catch (e) {
+      _errorMessage = 'Failed to delete note.';
+      notifyListeners();
+      return false;
+    }
+  }
+
   /// Sets the active subject filter. Pass `null` to show all notes.
   void filterBySubject(String? subject) {
     _selectedSubject = subject;

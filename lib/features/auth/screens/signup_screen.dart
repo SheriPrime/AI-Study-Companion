@@ -23,6 +23,9 @@ class _SignupScreenState extends State<SignupScreen>
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _emailController = TextEditingController();
+  final _universityController = TextEditingController();
+  final _departmentController = TextEditingController();
+  final _timelineController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
 
@@ -53,6 +56,9 @@ class _SignupScreenState extends State<SignupScreen>
 
     _nameController.addListener(_validateForm);
     _emailController.addListener(_validateForm);
+    _universityController.addListener(_validateForm);
+    _departmentController.addListener(_validateForm);
+    _timelineController.addListener(_validateForm);
     _passwordController.addListener(() {
       setState(() {});
       _validateForm();
@@ -65,6 +71,9 @@ class _SignupScreenState extends State<SignupScreen>
     _fadeController.dispose();
     _nameController.dispose();
     _emailController.dispose();
+    _universityController.dispose();
+    _departmentController.dispose();
+    _timelineController.dispose();
     _passwordController.dispose();
     _confirmPasswordController.dispose();
     super.dispose();
@@ -113,6 +122,21 @@ class _SignupScreenState extends State<SignupScreen>
     return null;
   }
 
+  String? _validateUniversity(String? value) {
+    if (value == null || value.trim().isEmpty) return 'University name is required';
+    return null;
+  }
+
+  String? _validateDepartment(String? value) {
+    if (value == null || value.trim().isEmpty) return 'Department / major is required';
+    return null;
+  }
+
+  String? _validateTimeline(String? value) {
+    if (value == null || value.trim().isEmpty) return 'Session (e.g. 2023-2027) is required';
+    return null;
+  }
+
   double _calculatePasswordStrength(String password) {
     if (password.isEmpty) return 0.0;
     
@@ -137,9 +161,12 @@ class _SignupScreenState extends State<SignupScreen>
     controller.clearError();
 
     await controller.signup(
-      _nameController.text.trim(),
-      _emailController.text.trim(),
-      _passwordController.text,
+      name: _nameController.text.trim(),
+      email: _emailController.text.trim(),
+      university: _universityController.text.trim(),
+      department: _departmentController.text.trim(),
+      timeline: _timelineController.text.trim(),
+      password: _passwordController.text,
     );
 
     if (!mounted) return;
@@ -274,6 +301,39 @@ class _SignupScreenState extends State<SignupScreen>
             keyboardType: TextInputType.emailAddress,
             textInputAction: TextInputAction.next,
             validator: _validateEmail,
+          ),
+          const SizedBox(height: 20),
+
+          // University
+          AppTextField(
+            label: 'University',
+            controller: _universityController,
+            prefixIcon: Icons.school_outlined,
+            keyboardType: TextInputType.text,
+            textInputAction: TextInputAction.next,
+            validator: _validateUniversity,
+          ),
+          const SizedBox(height: 20),
+
+          // Department
+          AppTextField(
+            label: 'Department / Major',
+            controller: _departmentController,
+            prefixIcon: Icons.account_tree_outlined,
+            keyboardType: TextInputType.text,
+            textInputAction: TextInputAction.next,
+            validator: _validateDepartment,
+          ),
+          const SizedBox(height: 20),
+
+          // Timeline
+          AppTextField(
+            label: 'Session / Timeline (e.g. 2023-2027)',
+            controller: _timelineController,
+            prefixIcon: Icons.calendar_today_outlined,
+            keyboardType: TextInputType.text,
+            textInputAction: TextInputAction.next,
+            validator: _validateTimeline,
           ),
           const SizedBox(height: 20),
 

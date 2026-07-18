@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import 'package:ai_study_companion/core/theme/app_colors.dart';
 import 'package:ai_study_companion/features/auth/controllers/auth_controller.dart';
 import 'package:ai_study_companion/features/profile/controllers/profile_controller.dart';
+import 'package:ai_study_companion/core/widgets/app_text_field.dart';
 
 /// Profile screen displaying user information with a premium gradient header,
 /// interactive circular avatar with camera badge, info cards, and a logout action.
@@ -84,6 +85,19 @@ class ProfileScreen extends StatelessWidget {
                       style: theme.textTheme.headlineMedium?.copyWith(
                         color: Colors.white,
                       ),
+                    ),
+                  ),
+                ),
+
+                // Edit Profile Button
+                Positioned(
+                  top: MediaQuery.of(context).padding.top + 8,
+                  right: 8,
+                  child: IconButton(
+                    onPressed: () => _showEditProfileDialog(context),
+                    icon: const Icon(Icons.edit_rounded, color: Colors.white),
+                    style: IconButton.styleFrom(
+                      minimumSize: const Size(48, 48),
                     ),
                   ),
                 ),
@@ -377,6 +391,141 @@ class ProfileScreen extends StatelessWidget {
               ],
             ),
           ),
+        );
+      },
+    );
+  }
+
+  void _showEditProfileDialog(BuildContext context) {
+    final authController = context.read<AuthController>();
+    final user = authController.currentUser;
+    if (user == null) return;
+
+    final nameController = TextEditingController(text: user.name);
+    final universityController = TextEditingController(text: user.university);
+    final departmentController = TextEditingController(text: user.department);
+    final timelineController = TextEditingController(text: user.timeline);
+    final formKey = GlobalKey<FormState>();
+    bool isSaving = false;
+
+    showDialog<void>(
+      context: context,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (ctx, setDialogState) {
+            return AlertDialog(
+              actionsAlignment: MainAxisAlignment.center,
+              title: const Text('Edit Profile'),
+              content: SingleChildScrollView(
+                child: Form(
+                  key: formKey,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      AppTextField(
+                        label: 'Full Name',
+                        controller: nameController,
+                        prefixIcon: Icons.person_outline,
+                        validator: (value) {
+                          if (value == null || value.trim().isEmpty) return 'Name is required';
+                          if (RegExp(r'[0-9]').hasMatch(value)) {
+                            return 'Numbers are not allowed';
+                          }
+                          return null;
+                        },
+                        onChanged: (_) => setDialogState(() {}),
+                      ),
+                      const SizedBox(height: 16),
+                      AppTextField(
+                        label: 'University',
+                        controller: universityController,
+                        prefixIcon: Icons.school_outlined,
+                        validator: (v) => (v == null || v.trim().isEmpty) ? 'Required' : null,
+                        onChanged: (_) => setDialogState(() {}),
+                      ),
+                      const SizedBox(height: 16),
+                      AppTextField(
+                        label: 'Department',
+                        controller: departmentController,
+                        prefixIcon: Icons.account_tree_outlined,
+                        validator: (v) => (v == null || v.trim().isEmpty) ? 'Required' : null,
+                        onChanged: (_) => setDialogState(() {}),
+                      ),
+                      const SizedBox(height: 16),
+                      AppTextField(
+                        label: 'Timeline',
+                        controller: timelineController,
+                        prefixIcon: Icons.calendar_today_outlined,
+                        validator: (v) => (v == null || v.trim().isEmpty) ? 'Required' : null,
+                        onChanged: (_) => setDialogState(() {}),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: isSaving ? null : () => Navigator.of(dialogContext).pop(),
+                  child: const Text('Cancel'),
+                ),
+                ElevatedButton(
+                  onPressed: (nameController.text.trim().isEmpty ||
+                          universityController.text.trim().isEmpty ||
+                          departmentController.text.trim().isEmpty ||
+                          timelineController.text.trim().isEmpty ||
+                          isSaving)
+                      ? null
+                      : () async {
+                          if (!formKey.currentState!.validate()) return;
+                          setDialogState(() => isSaving = true);
+                          
+                          final success = await authController.updateProfile(
+                            name: nameController.text.trim(),
+                            university: universityController.text.trim(),
+                            department: departmentController.text.trim(),
+                            timeline: timelineController.text.trim(),
+                          );
+
+                          if (dialogContext.mounted) {
+                            Navigator.of(dialogContext).pop();
+                            if (success) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: const Text('Profile updated successfully!'),
+                                  backgroundColor: AppColors.success,
+                                  behavior: SnackBarBehavior.floating,
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                ),
+                              );
+                            } else {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(authController.errorMessage ?? 'Failed to update profile.'),
+                                  backgroundColor: AppColors.error,
+                                ),
+                              );
+                            }
+                          }
+                        },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  child: isSaving
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                          ),
+                        )
+                      : const Text('Save'),
+                ),
+              ],
+            );
+          },
         );
       },
     );

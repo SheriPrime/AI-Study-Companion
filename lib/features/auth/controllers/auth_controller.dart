@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:ai_study_companion/models/user.dart';
 import 'package:ai_study_companion/services/firebase_auth_service.dart';
 
@@ -64,14 +65,79 @@ class AuthController extends ChangeNotifier {
   }
 
   /// Creates a new account with the given [name], [email], and [password] via Firebase.
-  Future<void> signup(String name, String email, String password) async {
+  Future<void> signup({
+    required String name,
+    required String email,
+    required String university,
+    required String department,
+    required String timeline,
+    required String password,
+  }) async {
     _setLoading(true);
     _clearError();
 
     try {
-      _currentUser = await _authService.signup(name, email, password);
+      _currentUser = await _authService.signup(
+        name: name,
+        email: email,
+        university: university,
+        department: department,
+        timeline: timeline,
+        password: password,
+      );
     } catch (e) {
       _errorMessage = e.toString().replaceFirst('Exception: ', '');
+    } finally {
+      _setLoading(false);
+    }
+  }
+
+  /// Updates the user's profile metadata in the current session.
+  /// Persists details to Firestore or SharedPreferences fallback.
+  Future<bool> updateProfile({
+    required String name,
+    required String university,
+    required String department,
+    required String timeline,
+  }) async {
+    _setLoading(true);
+    _clearError();
+
+    try {
+      final user = _currentUser;
+      if (user == null) throw Exception('No user logged in.');
+
+      if (isFallbackMode) {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('local_userName', name);
+        await prefs.setString('local_university', university);
+        await prefs.setString('local_department', department);
+        await prefs.setString('local_timeline', timeline);
+      } else {
+        // Update Firestore profile
+        await _authService.createUserProfile(
+          uid: user.id,
+          name: name,
+          university: university,
+          department: department,
+          timeline: timeline,
+        );
+      }
+
+      _currentUser = AppUser(
+        id: user.id,
+        name: name,
+        email: user.email,
+        university: university,
+        department: department,
+        timeline: timeline,
+      );
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _errorMessage = e.toString().replaceFirst('Exception: ', '');
+      notifyListeners();
+      return false;
     } finally {
       _setLoading(false);
     }
