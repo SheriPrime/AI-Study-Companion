@@ -484,114 +484,40 @@ class _SubjectFilterBar extends StatelessWidget {
   }
 }
 
-/// A single note card in the list.
-class _NoteCard extends StatelessWidget {
+/// A single note card in the list with animated hold-to-delete behavior.
+class _NoteCard extends StatefulWidget {
   final Note note;
 
   const _NoteCard({required this.note});
 
   @override
-  Widget build(BuildContext context) {
-    final dateFormatted = DateFormat('MMM d, yyyy').format(note.dateAdded);
+  State<_NoteCard> createState() => _NoteCardState();
+}
 
-    return Material(
-      color: AppColors.cardBackground,
-      borderRadius: BorderRadius.circular(16),
-      elevation: 0,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(16),
-        onTap: () => context.push('/notes/${note.id}', extra: note),
-        onLongPress: () => _confirmDelete(context, note),
-        child: Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: AppColors.divider.withValues(alpha: 0.6)),
-          ),
-          child: Row(
-            children: [
-              // Icon container
-              Container(
-                width: 48,
-                height: 48,
-                decoration: BoxDecoration(
-                  color: AppColors.getSubjectColor(note.subject)
-                      .withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Icon(
-                  Icons.description_outlined,
-                  color: AppColors.getSubjectColor(note.subject),
-                  size: 24,
-                ),
-              ),
-              const SizedBox(width: 14),
+class _NoteCardState extends State<_NoteCard>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _holdController;
 
-              // Info
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      note.title,
-                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.textPrimary,
-                          ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 6),
-                    Row(
-                      children: [
-                        SubjectChip(subject: note.subject),
-                        const SizedBox(width: 8),
-                        Flexible(
-                          child: Text(
-                            note.fileName,
-                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                  color: AppColors.textSecondary,
-                                  fontSize: 11,
-                                ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-
-              // Date & Delete Action
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Text(
-                    dateFormatted,
-                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                          color: AppColors.textHint,
-                        ),
-                  ),
-                  const SizedBox(height: 8),
-                  IconButton(
-                    icon: const Icon(
-                      Icons.delete_outline_rounded,
-                      color: AppColors.error,
-                      size: 20,
-                    ),
-                    splashRadius: 20,
-                    constraints: const BoxConstraints(),
-                    padding: EdgeInsets.zero,
-                    onPressed: () => _confirmDelete(context, note),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ),
+  @override
+  void initState() {
+    super.initState();
+    _holdController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1500),
     );
+
+    _holdController.addStatusListener((status) {
+      if (status == AnimationStatus.completed) {
+        _holdController.reset();
+        _confirmDelete(context, widget.note);
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _holdController.dispose();
+    super.dispose();
   }
 
   void _confirmDelete(BuildContext context, Note note) {
@@ -640,5 +566,167 @@ class _NoteCard extends StatelessWidget {
         );
       },
     );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final dateFormatted = DateFormat('MMM d, yyyy').format(widget.note.dateAdded);
+
+    return GestureDetector(
+      onTapDown: (_) => _holdController.forward(),
+      onTapUp: (_) => _holdController.reverse(),
+      onTapCancel: () => _holdController.reverse(),
+      onTap: () => context.push('/notes/${widget.note.id}', extra: widget.note),
+      child: AnimatedBuilder(
+        animation: _holdController,
+        builder: (context, child) {
+          return CustomPaint(
+            foregroundPainter: BorderPainter(
+              progress: _holdController.value,
+              color: AppColors.error,
+              borderRadius: 16,
+              strokeWidth: 3.5,
+            ),
+            child: child,
+          );
+        },
+        child: Material(
+          color: AppColors.cardBackground,
+          borderRadius: BorderRadius.circular(16),
+          elevation: 0,
+          child: Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: AppColors.divider.withValues(alpha: 0.6)),
+            ),
+            child: Row(
+              children: [
+                // Icon container
+                Container(
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    color: AppColors.getSubjectColor(widget.note.subject)
+                        .withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(
+                    Icons.description_outlined,
+                    color: AppColors.getSubjectColor(widget.note.subject),
+                    size: 24,
+                  ),
+                ),
+                const SizedBox(width: 14),
+
+                // Info
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        widget.note.title,
+                        style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.textPrimary,
+                            ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 6),
+                      Row(
+                        children: [
+                          SubjectChip(subject: widget.note.subject),
+                          const SizedBox(width: 8),
+                          Flexible(
+                            child: Text(
+                              widget.note.fileName,
+                              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                    color: AppColors.textSecondary,
+                                    fontSize: 11,
+                                  ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+
+                // Date & Delete Action
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text(
+                      dateFormatted,
+                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                            color: AppColors.textHint,
+                          ),
+                    ),
+                    const SizedBox(height: 8),
+                    IconButton(
+                      icon: const Icon(
+                        Icons.delete_outline_rounded,
+                        color: AppColors.error,
+                        size: 20,
+                      ),
+                      splashRadius: 20,
+                      constraints: const BoxConstraints(),
+                      padding: EdgeInsets.zero,
+                      onPressed: () => _confirmDelete(context, widget.note),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Custom Painter to draw animated border path outline based on hold progress.
+class BorderPainter extends CustomPainter {
+  final double progress;
+  final Color color;
+  final double borderRadius;
+  final double strokeWidth;
+
+  BorderPainter({
+    required this.progress,
+    required this.color,
+    this.borderRadius = 16,
+    this.strokeWidth = 3,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (progress <= 0) return;
+
+    final paint = Paint()
+      ..color = color
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = strokeWidth
+      ..strokeCap = StrokeCap.round;
+
+    final rect = Offset.zero & size;
+    final rrect = RRect.fromRectAndRadius(rect, Radius.circular(borderRadius));
+    final path = Path()..addRRect(rrect);
+
+    for (final pathMetric in path.computeMetrics()) {
+      final extractPath = pathMetric.extractPath(0.0, pathMetric.length * progress);
+      canvas.drawPath(extractPath, paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant BorderPainter oldDelegate) {
+    return oldDelegate.progress != progress ||
+        oldDelegate.color != color ||
+        oldDelegate.borderRadius != borderRadius ||
+        oldDelegate.strokeWidth != strokeWidth;
   }
 }
