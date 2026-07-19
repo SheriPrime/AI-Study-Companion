@@ -501,6 +501,7 @@ class _NoteCard extends StatelessWidget {
       child: InkWell(
         borderRadius: BorderRadius.circular(16),
         onTap: () => context.push('/notes/${note.id}', extra: note),
+        onLongPress: () => _confirmDelete(context, note),
         child: Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
