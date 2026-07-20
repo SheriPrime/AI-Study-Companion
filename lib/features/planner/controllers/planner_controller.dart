@@ -3,6 +3,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:ai_study_companion/models/study_task.dart';
 import 'package:ai_study_companion/services/firestore_service.dart';
+import 'package:ai_study_companion/services/notification_service.dart';
+import 'package:intl/intl.dart';
 
 /// Controller for the Study Planner feature.
 ///
@@ -89,6 +91,34 @@ class PlannerController extends ChangeNotifier {
       _tasks.add(savedTask);
       _tasks.sort((a, b) => a.date.compareTo(b.date));
       _errorMessage = null;
+
+      // ── Trigger Immediate Notification ───────────────────────────────
+      final notifService = NotificationService();
+      final immediateId = generatedId.hashCode;
+      final formattedDate = DateFormat('MMM d, h:mm a').format(task.date);
+      await notifService.showImmediateNotification(
+        id: immediateId,
+        title: 'Task Added! 📅',
+        body: '"${task.title}" is set for $formattedDate.',
+      );
+
+      // ── Schedule Reminder at 5:00 PM the previous day ──────────────────
+      final previousDay = task.date.subtract(const Duration(days: 1));
+      final reminderTime = DateTime(
+        previousDay.year,
+        previousDay.month,
+        previousDay.day,
+        17, // 5:00 PM (17:00)
+        0,
+      );
+
+      final reminderId = generatedId.hashCode + 1;
+      await notifService.scheduleNotification(
+        id: reminderId,
+        title: 'Task Due Tomorrow! ⏳',
+        body: '"${task.title}" is due tomorrow at ${DateFormat('h:mm a').format(task.date)}.',
+        scheduledDateTime: reminderTime,
+      );
     } catch (e) {
       _errorMessage = 'Failed to add task. Please try again.';
       debugPrint('PlannerController.addTask error: $e');
@@ -116,6 +146,12 @@ class PlannerController extends ChangeNotifier {
         await _firestoreService.updateTaskStatus(uid, task.title, task.date, statusStr);
         task.status = newStatus;
         notifyListeners();
+
+        // If the task was completed, cancel any scheduled tomorrow-reminder alarm
+        if (newStatus == TaskStatus.done) {
+          final reminderId = id.hashCode + 1;
+          await NotificationService().cancelNotification(reminderId);
+        }
       }
     } catch (e) {
       _errorMessage = 'Failed to update task.';

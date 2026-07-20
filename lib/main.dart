@@ -16,6 +16,7 @@ import 'package:ai_study_companion/features/notes/controllers/ai_hub_controller.
 import 'package:ai_study_companion/features/planner/controllers/planner_controller.dart';
 import 'package:ai_study_companion/features/progress/controllers/progress_controller.dart';
 import 'package:ai_study_companion/features/profile/controllers/profile_controller.dart';
+import 'package:ai_study_companion/services/notification_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -41,6 +42,9 @@ void main() async {
 
   // Initialize the SQLite local database
   await DatabaseHelper.instance.database;
+
+  // Initialize the local notification service
+  await NotificationService().init();
 
   runApp(const AIStudyCompanionApp());
 }
