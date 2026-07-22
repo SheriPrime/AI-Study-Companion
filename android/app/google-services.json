@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "903975411690",
+    "project_id": "ai-study-companion-63ba8",
+    "storage_bucket": "ai-study-companion-63ba8.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:903975411690:android:4863ca678312ec28265c93",
+        "android_client_info": {
+          "package_name": "com.shaheer.ai_study_companion"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC8iPQbTnaE5WZ6WpZk_OVb3aWgSCwfSlw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

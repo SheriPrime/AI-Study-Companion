@@ -95,7 +95,7 @@ class PlannerController extends ChangeNotifier {
       // ── Trigger Immediate Notification ───────────────────────────────
       final notifService = NotificationService();
       final immediateId = generatedId.hashCode;
-      final formattedDate = DateFormat('MMM d, h:mm a').format(task.date);
+      final formattedDate = DateFormat('MMM d, h:mm a').format(task.dueDateTime);
       await notifService.showImmediateNotification(
         id: immediateId,
         title: 'Task Added! 📅',
@@ -103,7 +103,7 @@ class PlannerController extends ChangeNotifier {
       );
 
       // ── Schedule Reminder at 5:00 PM the previous day ──────────────────
-      final previousDay = task.date.subtract(const Duration(days: 1));
+      final previousDay = task.dueDateTime.subtract(const Duration(days: 1));
       final reminderTime = DateTime(
         previousDay.year,
         previousDay.month,
@@ -116,7 +116,7 @@ class PlannerController extends ChangeNotifier {
       await notifService.scheduleNotification(
         id: reminderId,
         title: 'Task Due Tomorrow! ⏳',
-        body: '"${task.title}" is due tomorrow at ${DateFormat('h:mm a').format(task.date)}.',
+        body: '"${task.title}" is due tomorrow at ${DateFormat('h:mm a').format(task.dueDateTime)}.',
         scheduledDateTime: reminderTime,
       );
     } catch (e) {
@@ -156,6 +156,30 @@ class PlannerController extends ChangeNotifier {
     } catch (e) {
       _errorMessage = 'Failed to update task.';
       notifyListeners();
+    }
+  }
+
+  /// Deletes a task by id from Firestore/SQLite and cancels its notifications.
+  Future<bool> deleteTask(int id, String taskTitle) async {
+    final prefs = await SharedPreferences.getInstance();
+    final uid = FirebaseAuth.instance.currentUser?.uid ?? prefs.getString('local_userUid');
+    if (uid == null) return false;
+
+    try {
+      await _firestoreService.deleteTask(uid, id, taskTitle);
+      
+      // Cancel notifications
+      final notifService = NotificationService();
+      await notifService.cancelNotification(id.hashCode);
+      await notifService.cancelNotification(id.hashCode + 1);
+
+      _tasks.removeWhere((t) => t.id == id);
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _errorMessage = 'Failed to delete task.';
+      notifyListeners();
+      return false;
     }
   }
 }

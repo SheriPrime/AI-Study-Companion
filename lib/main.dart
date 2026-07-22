@@ -24,20 +24,45 @@ void main() async {
   // Load environment variables
   await dotenv.load(fileName: '.env');
 
-  // Initialize Firebase using a default config with placeholders so the app compiles
-  // and starts instantly without crashing, even if a user has not set up their
-  // local google-services.json file yet.
+  // Initialize Firebase: Try native configuration first (google-services.json),
+  // then check .env properties, and finally fall back to placeholder config.
   try {
-    await Firebase.initializeApp(
-      options: const FirebaseOptions(
-        apiKey: "placeholder-api-key-ai-study-companion",
-        appId: "1:placeholder:android:123456",
-        messagingSenderId: "1234567890",
-        projectId: "placeholder-project-id",
-      ),
-    );
+    await Firebase.initializeApp();
+    debugPrint('Firebase initialized successfully using native platform options.');
   } catch (e) {
-    debugPrint('Firebase initialization warning: $e');
+    debugPrint('Native Firebase initialization failed, trying .env config: $e');
+    final firebaseApiKey = dotenv.env['FIREBASE_API_KEY'];
+    final firebaseAppId = dotenv.env['FIREBASE_APP_ID'];
+    final firebaseSenderId = dotenv.env['FIREBASE_MESSAGING_SENDER_ID'];
+    final firebaseProjectId = dotenv.env['FIREBASE_PROJECT_ID'];
+
+    try {
+      if (firebaseApiKey != null &&
+          firebaseApiKey.isNotEmpty &&
+          firebaseApiKey != 'your_firebase_api_key_here') {
+        await Firebase.initializeApp(
+          options: FirebaseOptions(
+            apiKey: firebaseApiKey,
+            appId: firebaseAppId ?? '',
+            messagingSenderId: firebaseSenderId ?? '',
+            projectId: firebaseProjectId ?? '',
+          ),
+        );
+        debugPrint('Firebase initialized successfully using .env options.');
+      } else {
+        await Firebase.initializeApp(
+          options: const FirebaseOptions(
+            apiKey: "placeholder-api-key-ai-study-companion",
+            appId: "1:placeholder:android:123456",
+            messagingSenderId: "1234567890",
+            projectId: "placeholder-project-id",
+          ),
+        );
+        debugPrint('Firebase initialized successfully using placeholder options.');
+      }
+    } catch (err) {
+      debugPrint('All Firebase initialization attempts failed: $err');
+    }
   }
 
   // Initialize the SQLite local database

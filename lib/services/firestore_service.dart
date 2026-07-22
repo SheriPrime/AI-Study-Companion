@@ -154,6 +154,25 @@ class FirestoreService {
     }
   }
 
+  /// Deletes a task from Firestore or local SQLite fallback database.
+  Future<void> deleteTask(String uid, int taskId, String taskTitle) async {
+    if (isFallbackMode) {
+      await _dbHelper.deleteTask(taskId);
+      return;
+    }
+
+    final snapshot = await _db
+        .collection('tasks')
+        .where('userId', isEqualTo: uid)
+        .where('title', isEqualTo: taskTitle)
+        .limit(1)
+        .get();
+
+    if (snapshot.docs.isNotEmpty) {
+      await snapshot.docs.first.reference.delete();
+    }
+  }
+
   // ─── Progress Tracking ─────────────────────────────────────────────────
 
   /// Fetches progress metrics for a user.

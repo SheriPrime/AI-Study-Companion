@@ -460,41 +460,99 @@ class _TaskCard extends StatelessWidget {
                 ),
               ),
 
-              // Status action icon
-              SizedBox(
-                width: 48,
-                height: 48,
-                child: isOverdue
-                    ? const Center(
-                        child: Icon(
-                          Icons.warning_rounded,
-                          color: AppColors.error,
-                          size: 24,
-                        ),
-                      )
-                    : IconButton(
-                        onPressed: () {
-                          if (task.id != null) {
-                            controller.toggleTask(task.id!);
-                          }
-                        },
-                        icon: Icon(
-                          isDone
-                              ? Icons.check_circle_rounded
-                              : Icons.radio_button_unchecked_rounded,
-                          color: isDone
-                              ? AppColors.success
-                              : AppColors.textHint,
-                          size: 24,
-                        ),
-                        tooltip: isDone ? 'Mark pending' : 'Mark done',
-                        splashRadius: 24,
+              // Actions (Status toggle & Delete)
+              Padding(
+                padding: const EdgeInsets.only(right: 8.0),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    IconButton(
+                      onPressed: () {
+                        if (task.id != null) {
+                          controller.toggleTask(task.id!);
+                        }
+                      },
+                      icon: Icon(
+                        isDone
+                            ? Icons.check_circle_rounded
+                            : isOverdue
+                                ? Icons.warning_amber_rounded
+                                : Icons.radio_button_unchecked_rounded,
+                        color: isDone
+                            ? AppColors.success
+                            : isOverdue
+                                ? AppColors.error
+                                : AppColors.textHint,
+                        size: 24,
                       ),
+                      tooltip: isDone ? 'Mark pending' : 'Mark done',
+                      splashRadius: 22,
+                    ),
+                    IconButton(
+                      onPressed: () => _confirmDeleteTask(context),
+                      icon: const Icon(
+                        Icons.delete_outline_rounded,
+                        color: AppColors.error,
+                        size: 20,
+                      ),
+                      tooltip: 'Delete task',
+                      splashRadius: 22,
+                    ),
+                  ],
+                ),
               ),
             ],
           ),
         ),
       ),
+    );
+  }
+
+  void _confirmDeleteTask(BuildContext context) {
+    showDialog<void>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          actionsAlignment: MainAxisAlignment.center,
+          title: const Text('Delete Task'),
+          content: Text('Are you sure you want to delete "${task.title}"?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                Navigator.of(dialogContext).pop();
+                final success = await controller.deleteTask(task.id!, task.title);
+                if (!context.mounted) return;
+                if (success) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('"${task.title}" deleted successfully.'),
+                      backgroundColor: AppColors.success,
+                      behavior: SnackBarBehavior.floating,
+                    ),
+                  );
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Failed to delete task.'),
+                      backgroundColor: AppColors.error,
+                      behavior: SnackBarBehavior.floating,
+                    ),
+                  );
+                }
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.error,
+                foregroundColor: Colors.white,
+              ),
+              child: const Text('Delete'),
+            ),
+          ],
+        );
+      },
     );
   }
 

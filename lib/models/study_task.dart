@@ -21,6 +21,18 @@ class StudyTask {
     this.status = TaskStatus.pending,
   });
 
+  /// Combines the task [date] and [time] components into a single [DateTime] object.
+  DateTime get dueDateTime {
+    if (time == null) return date;
+    return DateTime(
+      date.year,
+      date.month,
+      date.day,
+      time!.hour,
+      time!.minute,
+    );
+  }
+
   /// Creates a [StudyTask] from a SQLite row map.
   factory StudyTask.fromMap(Map<String, dynamic> map) {
     final statusStr = map['status'] as String? ?? 'Pending';
