@@ -9,6 +9,7 @@ import 'package:ai_study_companion/services/firebase_auth_service.dart';
 import 'package:ai_study_companion/services/firestore_service.dart';
 import 'package:ai_study_companion/services/local_file_service.dart';
 import 'package:ai_study_companion/services/gemini_service.dart';
+import 'package:ai_study_companion/services/youtube_service.dart';
 import 'package:ai_study_companion/features/auth/controllers/auth_controller.dart';
 import 'package:ai_study_companion/features/dashboard/controllers/dashboard_controller.dart';
 import 'package:ai_study_companion/features/notes/controllers/notes_controller.dart';
@@ -101,6 +102,9 @@ class AIStudyCompanionApp extends StatelessWidget {
         Provider<DatabaseHelper>(
           create: (_) => DatabaseHelper.instance,
         ),
+        Provider<YouTubeService>(
+          create: (_) => YouTubeService(),
+        ),
 
         // ── Controllers ────────────────────────────────────────────
         ChangeNotifierProvider<AuthController>(
@@ -124,6 +128,7 @@ class AIStudyCompanionApp extends StatelessWidget {
           create: (ctx) => AiHubController(
             ctx.read<GeminiService>(),
             ctx.read<LocalFileService>(),
+            ctx.read<YouTubeService>(),
           ),
         ),
         ChangeNotifierProvider<PlannerController>(

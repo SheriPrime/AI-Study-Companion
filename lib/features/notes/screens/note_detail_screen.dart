@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import 'package:ai_study_companion/core/theme/app_colors.dart';
 import 'package:ai_study_companion/core/widgets/subject_chip.dart';
@@ -9,6 +10,7 @@ import 'package:ai_study_companion/core/widgets/loading_button.dart';
 import 'package:ai_study_companion/models/note.dart';
 import 'package:ai_study_companion/models/summary.dart';
 import 'package:ai_study_companion/models/quiz.dart';
+import 'package:ai_study_companion/models/youtube_video.dart';
 import 'package:ai_study_companion/features/notes/controllers/ai_hub_controller.dart';
 import 'package:ai_study_companion/features/notes/controllers/notes_controller.dart';
 
@@ -38,6 +40,7 @@ class _NoteDetailScreenState extends State<NoteDetailScreen>
     with TickerProviderStateMixin {
   late final AnimationController _pulseController;
   late final Animation<double> _pulseAnimation;
+  int _selectedTab = 0; // 0: AI Assistant, 1: Visual Learning
 
   @override
   void initState() {
@@ -49,6 +52,25 @@ class _NoteDetailScreenState extends State<NoteDetailScreen>
     _pulseAnimation = Tween<double>(begin: 0.4, end: 1.0).animate(
       CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
     );
+
+    // Load YouTube recommendations once we know the note
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final note = widget.note ?? _findNote();
+      if (note != null) {
+        final query = '${note.title} ${note.subject}';
+        context.read<AiHubController>().loadRecommendedVideos(query);
+      }
+    });
+  }
+
+  Note? _findNote() {
+    try {
+      return context.read<NotesController>().notes.firstWhere(
+            (n) => n.id.toString() == widget.noteId,
+          );
+    } catch (_) {
+      return null;
+    }
   }
 
   @override
@@ -109,47 +131,158 @@ class _NoteDetailScreenState extends State<NoteDetailScreen>
               children: [
                 // ── Note info card ────────────────────────────────────
                 _NoteInfoCard(note: note),
-                const SizedBox(height: 24),
+                const SizedBox(height: 20),
 
-                // ── Action buttons ────────────────────────────────────
-                _ActionButtonRow(
-                  localFilePath: note.localFilePath,
-                  controller: controller,
+                // ── Segmented Tab Toggle ──────────────────────────────
+                Container(
+                  height: 48,
+                  padding: const EdgeInsets.all(4),
+                  decoration: BoxDecoration(
+                    color: AppColors.divider.withValues(alpha: 0.25),
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: GestureDetector(
+                          onTap: () => setState(() => _selectedTab = 0),
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: _selectedTab == 0
+                                  ? AppColors.surfaceWhite
+                                  : Colors.transparent,
+                              borderRadius: BorderRadius.circular(10),
+                              boxShadow: _selectedTab == 0
+                                  ? [
+                                      BoxShadow(
+                                        color: Colors.black.withValues(alpha: 0.06),
+                                        blurRadius: 4,
+                                        offset: const Offset(0, 2),
+                                      ),
+                                    ]
+                                  : [],
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  Icons.auto_awesome,
+                                  size: 18,
+                                  color: _selectedTab == 0
+                                      ? AppColors.primary
+                                      : AppColors.textSecondary,
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  'AI Assistant',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.w600,
+                                    color: _selectedTab == 0
+                                        ? AppColors.textPrimary
+                                        : AppColors.textSecondary,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                      Expanded(
+                        child: GestureDetector(
+                          onTap: () => setState(() => _selectedTab = 1),
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: _selectedTab == 1
+                                  ? AppColors.surfaceWhite
+                                  : Colors.transparent,
+                              borderRadius: BorderRadius.circular(10),
+                              boxShadow: _selectedTab == 1
+                                  ? [
+                                      BoxShadow(
+                                        color: Colors.black.withValues(alpha: 0.06),
+                                        blurRadius: 4,
+                                        offset: const Offset(0, 2),
+                                      ),
+                                    ]
+                                  : [],
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  Icons.play_circle_fill,
+                                  size: 18,
+                                  color: _selectedTab == 1
+                                      ? Colors.red
+                                      : AppColors.textSecondary,
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  'Visual Learning',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.w600,
+                                    color: _selectedTab == 1
+                                        ? AppColors.textPrimary
+                                        : AppColors.textSecondary,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
                 const SizedBox(height: 24),
 
-                // ── Error message ─────────────────────────────────────
-                if (controller.errorMessage != null)
-                  _ErrorBanner(message: controller.errorMessage!),
-
-                // ── Generating shimmer ────────────────────────────────
-                if (controller.isGeneratingSummary)
-                  _PulsingShimmerSection(
-                    animation: _pulseAnimation,
-                    label: 'Generating AI Summary…',
-                    icon: Icons.auto_awesome,
-                    color: AppColors.primary,
-                  ),
-
-                if (controller.isGeneratingQuiz)
-                  _PulsingShimmerSection(
-                    animation: _pulseAnimation,
-                    label: 'Generating AI Quiz…',
-                    icon: Icons.quiz_outlined,
-                    color: AppColors.quizPurple,
-                  ),
-
-                // ── Summary results ───────────────────────────────────
-                if (controller.summary != null &&
-                    !controller.isGeneratingSummary)
-                  _SummarySection(summary: controller.summary!),
-
-                // ── Quiz results ──────────────────────────────────────
-                if (controller.quiz != null && !controller.isGeneratingQuiz)
-                  _QuizSection(
-                    quiz: controller.quiz!,
+                if (_selectedTab == 0) ...[
+                  // ── Action buttons ────────────────────────────────────
+                  _ActionButtonRow(
+                    localFilePath: note.localFilePath,
                     controller: controller,
                   ),
+                  const SizedBox(height: 24),
+
+                  // ── Error message ─────────────────────────────────────
+                  if (controller.errorMessage != null)
+                    _ErrorBanner(message: controller.errorMessage!),
+
+                  // ── Generating shimmer ────────────────────────────────
+                  if (controller.isGeneratingSummary)
+                    _PulsingShimmerSection(
+                      animation: _pulseAnimation,
+                      label: 'Generating AI Summary…',
+                      icon: Icons.auto_awesome,
+                      color: AppColors.primary,
+                    ),
+
+                  if (controller.isGeneratingQuiz)
+                    _PulsingShimmerSection(
+                      animation: _pulseAnimation,
+                      label: 'Generating AI Quiz…',
+                      icon: Icons.quiz_outlined,
+                      color: AppColors.quizPurple,
+                    ),
+
+                  // ── Summary results ───────────────────────────────────
+                  if (controller.summary != null &&
+                      !controller.isGeneratingSummary)
+                    _SummarySection(summary: controller.summary!),
+
+                  // ── Quiz results ──────────────────────────────────────
+                  if (controller.quiz != null && !controller.isGeneratingQuiz)
+                    _QuizSection(
+                      quiz: controller.quiz!,
+                      controller: controller,
+                    ),
+                ] else ...[
+                  // ── YouTube Recommendations (Visual Learning Tab) ─────
+                  _YouTubeSection(
+                    videos: controller.recommendedVideos,
+                    isLoading: controller.isLoadingVideos,
+                  ),
+                ],
               ],
             ),
           );
@@ -288,10 +421,95 @@ class _ActionButtonRow extends StatelessWidget {
             isLoading: controller.isGeneratingQuiz,
             onTap: controller.isGeneratingSummary || controller.isGeneratingQuiz
                 ? null
-                : () => controller.generateQuiz(localFilePath),
+                : () => _showQuestionCountDialog(context),
           ),
         ),
       ],
+    );
+  }
+
+  void _showQuestionCountDialog(BuildContext context) {
+    int selectedCount = 10;
+    showDialog<void>(
+      context: context,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              actionsAlignment: MainAxisAlignment.center,
+              title: const Row(
+                children: [
+                  Icon(Icons.quiz_outlined, color: AppColors.quizPurple),
+                  SizedBox(width: 8),
+                  Text('Quiz Question Count'),
+                ],
+              ),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'How many conceptual MCQs would you like Gemini AI to generate for this note?',
+                    style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
+                  ),
+                  const SizedBox(height: 16),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [5, 10, 15, 20].map((count) {
+                      final isSelected = selectedCount == count;
+                      return ChoiceChip(
+                        label: Text('$count Questions'),
+                        selected: isSelected,
+                        selectedColor: AppColors.quizPurple,
+                        labelStyle: TextStyle(
+                          color: isSelected ? Colors.white : AppColors.textPrimary,
+                          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                        ),
+                        onSelected: (selected) {
+                          if (selected) {
+                            setDialogState(() => selectedCount = count);
+                          }
+                        },
+                      );
+                    }).toList(),
+                  ),
+                ],
+              ),
+              actions: [
+                Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    ElevatedButton(
+                      onPressed: () {
+                        Navigator.of(dialogContext).pop();
+                        controller.generateQuiz(localFilePath, count: selectedCount);
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.quizPurple,
+                        foregroundColor: Colors.white,
+                        minimumSize: const Size(double.infinity, 44),
+                      ),
+                      child: const Text('Generate Quiz'),
+                    ),
+                    const SizedBox(height: 8),
+                    Center(
+                      child: TextButton(
+                        onPressed: () => Navigator.of(dialogContext).pop(),
+                        child: Text(
+                          'Cancel',
+                          style: TextStyle(color: Colors.grey[600], fontWeight: FontWeight.w600),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            );
+          },
+        );
+      },
     );
   }
 }
@@ -997,6 +1215,233 @@ class _PremiumCard extends StatelessWidget {
           const SizedBox(height: 14),
           child,
         ],
+      ),
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// YouTube Recommendations Section
+// ═══════════════════════════════════════════════════════════════════════════════
+
+class _YouTubeSection extends StatelessWidget {
+  final List<YouTubeVideo> videos;
+  final bool isLoading;
+
+  const _YouTubeSection({
+    required this.videos,
+    required this.isLoading,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    if (isLoading) {
+      return Column(
+        children: List.generate(
+          3,
+          (idx) => const Padding(
+            padding: EdgeInsets.only(bottom: 16),
+            child: ShimmerCard(height: 110),
+          ),
+        ),
+      );
+    }
+
+    if (videos.isEmpty) {
+      return Container(
+        padding: const EdgeInsets.all(32),
+        alignment: Alignment.center,
+        child: Column(
+          children: [
+            Icon(Icons.video_library_outlined, size: 48, color: AppColors.textHint),
+            const SizedBox(height: 12),
+            Text(
+              'No recommended videos found for this topic.',
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: AppColors.textSecondary,
+                  ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.red.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(Icons.play_circle_fill, color: Colors.red, size: 20),
+            ),
+            const SizedBox(width: 10),
+            Text(
+              'Recommended Visuals',
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textPrimary,
+                  ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 16),
+
+        ListView.separated(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: videos.length,
+          separatorBuilder: (ctx, idx) => const SizedBox(height: 14),
+          itemBuilder: (ctx, index) => _YouTubeVideoCard(
+            video: videos[index],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _YouTubeVideoCard extends StatelessWidget {
+  final YouTubeVideo video;
+
+  const _YouTubeVideoCard({required this.video});
+
+  Future<void> _openVideo(BuildContext context) async {
+    final webUri = Uri.parse(video.videoUrl);
+    try {
+      await launchUrl(
+        webUri,
+        mode: LaunchMode.externalApplication,
+      );
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Could not launch video: ${video.videoUrl}'),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.cardBackground,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.divider.withValues(alpha: 0.6)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(16),
+          onTap: () => _openVideo(context),
+          child: Padding(
+            padding: const EdgeInsets.all(12),
+            child: Row(
+              children: [
+                // Thumbnail with play overlay
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      Image.network(
+                        video.thumbnailUrl,
+                        width: 120,
+                        height: 80,
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) => Container(
+                          width: 120,
+                          height: 80,
+                          color: Colors.grey[200],
+                          child: const Icon(Icons.videocam_off, color: Colors.grey),
+                        ),
+                      ),
+                      Container(
+                        width: 120,
+                        height: 80,
+                        color: Colors.black.withValues(alpha: 0.25),
+                      ),
+                      const Icon(
+                        Icons.play_circle_fill,
+                        color: Colors.red,
+                        size: 36,
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 14),
+
+                // Title and channel info
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        video.title,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.textPrimary,
+                              height: 1.3,
+                            ),
+                      ),
+                      const SizedBox(height: 6),
+                      Row(
+                        children: [
+                          Icon(Icons.person_outline, size: 14, color: AppColors.textHint),
+                          const SizedBox(width: 4),
+                          Expanded(
+                            child: Text(
+                              video.channelName,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                    color: AppColors.textSecondary,
+                                    fontSize: 12,
+                                  ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          const Icon(Icons.open_in_new, size: 12, color: Colors.red),
+                          const SizedBox(width: 4),
+                          Text(
+                            'Watch on YouTube',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.red[700],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }

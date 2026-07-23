@@ -87,7 +87,6 @@ class FirestoreService {
     final snapshot = await _db
         .collection('tasks')
         .where('userId', isEqualTo: uid)
-        .orderBy('date', descending: false)
         .get();
 
     return snapshot.docs.map((doc) {
@@ -246,5 +245,69 @@ class FirestoreService {
       'userId': uid,
       'name': courseName,
     });
+  }
+
+  // ─── Notes Storage ────────────────────────────────────────────────────
+
+  /// Fetches all notes uploaded by the user from Cloud Firestore.
+  Future<List<Map<String, dynamic>>> fetchNotes(String uid) async {
+    if (isFallbackMode) return [];
+
+    final snapshot = await _db
+        .collection('notes')
+        .where('userId', isEqualTo: uid)
+        .get();
+
+    return snapshot.docs.map((doc) {
+      final data = doc.data();
+      return {
+        'id': doc.id.hashCode,
+        'docId': doc.id,
+        'title': data['title'] as String? ?? 'Untitled Note',
+        'subject': data['subject'] as String? ?? 'General',
+        'localFilePath': data['localFilePath'] as String? ?? '',
+        'fileContent': data['fileContent'] as String? ?? '',
+        'dateAdded': data['dateAdded'] as String? ?? DateTime.now().toIso8601String(),
+      };
+    }).toList();
+  }
+
+  /// Saves a note document to Cloud Firestore.
+  Future<String> uploadNote({
+    required String uid,
+    required String title,
+    required String subject,
+    required String localFilePath,
+    String? fileContent,
+  }) async {
+    if (isFallbackMode) return '';
+
+    final docRef = await _db.collection('notes').add({
+      'userId': uid,
+      'title': title,
+      'subject': subject,
+      'localFilePath': localFilePath,
+      'fileContent': fileContent ?? '',
+      'dateAdded': DateTime.now().toIso8601String(),
+      'createdAt': FieldValue.serverTimestamp(),
+    });
+
+    return docRef.id;
+  }
+
+  /// Deletes a note document from Cloud Firestore by title match.
+  Future<void> deleteNote(String uid, String title) async {
+    if (isFallbackMode) return;
+
+    final snapshot = await _db
+        .collection('notes')
+        .where('userId', isEqualTo: uid)
+        .where('title', isEqualTo: title)
+        .limit(1)
+        .get();
+
+    if (snapshot.docs.isNotEmpty) {
+      await snapshot.docs.first.reference.delete();
+    }
   }
 }

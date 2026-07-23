@@ -1,8 +1,10 @@
 import 'package:flutter/foundation.dart' hide Summary;
 import 'package:ai_study_companion/models/summary.dart';
 import 'package:ai_study_companion/models/quiz.dart';
+import 'package:ai_study_companion/models/youtube_video.dart';
 import 'package:ai_study_companion/services/gemini_service.dart';
 import 'package:ai_study_companion/services/local_file_service.dart';
+import 'package:ai_study_companion/services/youtube_service.dart';
 
 /// Controller for the AI Hub (note detail) screen.
 ///
@@ -11,8 +13,9 @@ import 'package:ai_study_companion/services/local_file_service.dart';
 class AiHubController extends ChangeNotifier {
   final GeminiService _geminiService;
   final LocalFileService _fileService;
+  final YouTubeService _youtubeService;
 
-  AiHubController(this._geminiService, this._fileService);
+  AiHubController(this._geminiService, this._fileService, this._youtubeService);
 
   // ---------------------------------------------------------------------------
   // State
@@ -43,6 +46,13 @@ class AiHubController extends ChangeNotifier {
 
   String? _errorMessage;
   String? get errorMessage => _errorMessage;
+
+  // YouTube recommendations
+  bool _isLoadingVideos = false;
+  bool get isLoadingVideos => _isLoadingVideos;
+
+  List<YouTubeVideo> _recommendedVideos = [];
+  List<YouTubeVideo> get recommendedVideos => _recommendedVideos;
 
   // ---------------------------------------------------------------------------
   // Derived getters
@@ -104,10 +114,10 @@ class AiHubController extends ChangeNotifier {
 
   /// Generates an AI quiz for the note at [localFilePath].
   ///
-  /// 1. Extracts text from the PDF
-  /// 2. Sends to Gemini for quiz generation
+  /// 1. Extracts text from the PDF/document
+  /// 2. Sends to Gemini for conceptual MCQ quiz generation
   /// 3. Parses the JSON response into [QuizQuestion] models
-  Future<void> generateQuiz(String localFilePath) async {
+  Future<void> generateQuiz(String localFilePath, {int count = 10}) async {
     _isGeneratingQuiz = true;
     _errorMessage = null;
     _selectedAnswers.clear();
@@ -119,7 +129,7 @@ class AiHubController extends ChangeNotifier {
       final extractedText = await _fileService.extractText(localFilePath);
 
       // Generate quiz via Gemini
-      final questions = await _geminiService.generateQuiz(extractedText);
+      final questions = await _geminiService.generateQuiz(extractedText, count: count);
 
       _quiz = Quiz(
         noteTitle: '',
@@ -164,7 +174,25 @@ class AiHubController extends ChangeNotifier {
     _selectedAnswers.clear();
     _showResults = false;
     _errorMessage = null;
+    _recommendedVideos = [];
+    _isLoadingVideos = false;
     notifyListeners();
+  }
+
+  /// Loads recommended YouTube videos based on the note's title/subject.
+  Future<void> loadRecommendedVideos(String query) async {
+    if (_isLoadingVideos || _recommendedVideos.isNotEmpty) return;
+    _isLoadingVideos = true;
+    notifyListeners();
+
+    try {
+      _recommendedVideos = await _youtubeService.searchVideos(query, maxResults: 5);
+    } catch (e) {
+      debugPrint('AiHubController.loadRecommendedVideos error: $e');
+    } finally {
+      _isLoadingVideos = false;
+      notifyListeners();
+    }
   }
 
   // ---------------------------------------------------------------------------

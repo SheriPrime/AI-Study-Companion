@@ -464,10 +464,6 @@ class ProfileScreen extends StatelessWidget {
                 ),
               ),
               actions: [
-                TextButton(
-                  onPressed: isSaving ? null : () => Navigator.of(dialogContext).pop(),
-                  child: const Text('Cancel'),
-                ),
                 ElevatedButton(
                   onPressed: (nameController.text.trim().isEmpty ||
                           universityController.text.trim().isEmpty ||
@@ -511,6 +507,7 @@ class ProfileScreen extends StatelessWidget {
                     backgroundColor: AppColors.primary,
                     foregroundColor: Colors.white,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    minimumSize: const Size(double.infinity, 44),
                   ),
                   child: isSaving
                       ? const SizedBox(
@@ -522,6 +519,14 @@ class ProfileScreen extends StatelessWidget {
                           ),
                         )
                       : const Text('Save'),
+                ),
+                const SizedBox(height: 4),
+                TextButton(
+                  onPressed: isSaving ? null : () => Navigator.of(dialogContext).pop(),
+                  child: Text(
+                    'Cancel',
+                    style: TextStyle(color: Colors.grey[600]),
+                  ),
                 ),
               ],
             );

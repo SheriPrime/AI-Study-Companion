@@ -171,18 +171,19 @@ class _SignupScreenState extends State<SignupScreen>
 
     if (!mounted) return;
 
-    if (controller.isLoggedIn) {
+    if (controller.errorMessage == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: const Text('Account created successfully!'),
+          content: const Text('Account created successfully! Please log in with your credentials.'),
           backgroundColor: AppColors.success,
           behavior: SnackBarBehavior.floating,
+          duration: const Duration(seconds: 4),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           margin: const EdgeInsets.all(16),
         ),
       );
-      context.go('/dashboard');
-    } else if (controller.errorMessage != null) {
+      context.go('/login');
+    } else {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(controller.errorMessage!),

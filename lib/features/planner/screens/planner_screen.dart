@@ -178,21 +178,34 @@ class _PlannerScreenState extends State<PlannerScreen> {
                           builder: (_, controller, child) {
                             final isValid =
                                 titleController.text.trim().isNotEmpty;
-                            return LoadingButton(
-                              text: 'Add Task',
-                              icon: Icons.add_task,
-                              isLoading: controller.isAddingTask,
-                              onPressed: isValid
-                                  ? () => _submitTask(
-                                        dialogContext,
-                                        controller,
-                                        formKey,
-                                        titleController,
-                                        descriptionController,
-                                        selectedDate,
-                                        selectedTime,
-                                      )
-                                  : null,
+                            return Column(
+                              crossAxisAlignment: CrossAxisAlignment.center,
+                              children: [
+                                LoadingButton(
+                                  text: 'Add Task',
+                                  icon: Icons.add_task,
+                                  isLoading: controller.isAddingTask,
+                                  onPressed: isValid
+                                      ? () => _submitTask(
+                                            dialogContext,
+                                            controller,
+                                            formKey,
+                                            titleController,
+                                            descriptionController,
+                                            selectedDate,
+                                            selectedTime,
+                                          )
+                                      : null,
+                                ),
+                                const SizedBox(height: 8),
+                                TextButton(
+                                  onPressed: () => Navigator.of(dialogContext).pop(),
+                                  child: Text(
+                                    'Cancel',
+                                    style: TextStyle(color: Colors.grey[600]),
+                                  ),
+                                ),
+                              ],
                             );
                           },
                         ),
@@ -517,10 +530,6 @@ class _TaskCard extends StatelessWidget {
           title: const Text('Delete Task'),
           content: Text('Are you sure you want to delete "${task.title}"?'),
           actions: [
-            TextButton(
-              onPressed: () => Navigator.of(dialogContext).pop(),
-              child: const Text('Cancel'),
-            ),
             ElevatedButton(
               onPressed: () async {
                 Navigator.of(dialogContext).pop();
@@ -547,8 +556,17 @@ class _TaskCard extends StatelessWidget {
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.error,
                 foregroundColor: Colors.white,
+                minimumSize: const Size(double.infinity, 44),
               ),
               child: const Text('Delete'),
+            ),
+            const SizedBox(height: 4),
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: Text(
+                'Cancel',
+                style: TextStyle(color: Colors.grey[600]),
+              ),
             ),
           ],
         );

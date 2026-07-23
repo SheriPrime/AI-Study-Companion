@@ -279,51 +279,64 @@ class _NotesScreenState extends State<NotesScreen> {
                       ),
                       const SizedBox(height: 24),
 
-                      // Upload button
+                      // Upload button + Cancel
                       Consumer<NotesController>(
                         builder: (_, ctrl, child) {
                           final isValid = titleController.text.trim().isNotEmpty &&
                               selectedSubject != null &&
                               selectedFile != null;
-                          return LoadingButton(
-                            text: 'Upload Note',
-                            icon: Icons.cloud_upload_outlined,
-                            isLoading: ctrl.isUploading,
-                            onPressed: isValid
-                                ? () async {
-                                    if (!formKey.currentState!.validate()) return;
-                                    final success = await ctrl.uploadNote(
-                                      titleController.text.trim(),
-                                      selectedSubject!,
-                                      selectedFile!,
-                                    );
-                                    if (!ctx.mounted) return;
-                                    if (success) {
-                                      Navigator.of(ctx).pop();
-                                      ScaffoldMessenger.of(context).showSnackBar(
-                                        SnackBar(
-                                          content: const Text('Note uploaded successfully!'),
-                                          backgroundColor: AppColors.success,
-                                          behavior: SnackBarBehavior.floating,
-                                          shape: RoundedRectangleBorder(
-                                            borderRadius: BorderRadius.circular(10),
-                                          ),
-                                        ),
-                                      );
-                                    } else {
-                                      ScaffoldMessenger.of(context).showSnackBar(
-                                        SnackBar(
-                                          content: Text(ctrl.errorMessage ?? 'Upload failed. Please try again.'),
-                                          backgroundColor: AppColors.error,
-                                          behavior: SnackBarBehavior.floating,
-                                          shape: RoundedRectangleBorder(
-                                            borderRadius: BorderRadius.circular(10),
-                                          ),
-                                        ),
-                                      );
-                                    }
-                                  }
-                                : null,
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.center,
+                            children: [
+                              LoadingButton(
+                                text: 'Upload Note',
+                                icon: Icons.cloud_upload_outlined,
+                                isLoading: ctrl.isUploading,
+                                onPressed: isValid
+                                    ? () async {
+                                        if (!formKey.currentState!.validate()) return;
+                                        final success = await ctrl.uploadNote(
+                                          titleController.text.trim(),
+                                          selectedSubject!,
+                                          selectedFile!,
+                                        );
+                                        if (!ctx.mounted) return;
+                                        if (success) {
+                                          Navigator.of(ctx).pop();
+                                          ScaffoldMessenger.of(context).showSnackBar(
+                                            SnackBar(
+                                              content: const Text('Note uploaded successfully!'),
+                                              backgroundColor: AppColors.success,
+                                              behavior: SnackBarBehavior.floating,
+                                              shape: RoundedRectangleBorder(
+                                                borderRadius: BorderRadius.circular(10),
+                                              ),
+                                            ),
+                                          );
+                                        } else {
+                                          ScaffoldMessenger.of(context).showSnackBar(
+                                            SnackBar(
+                                              content: Text(ctrl.errorMessage ?? 'Upload failed. Please try again.'),
+                                              backgroundColor: AppColors.error,
+                                              behavior: SnackBarBehavior.floating,
+                                              shape: RoundedRectangleBorder(
+                                                borderRadius: BorderRadius.circular(10),
+                                              ),
+                                            ),
+                                          );
+                                        }
+                                      }
+                                    : null,
+                              ),
+                              const SizedBox(height: 8),
+                              TextButton(
+                                onPressed: () => Navigator.of(ctx).pop(),
+                                child: Text(
+                                  'Cancel',
+                                  style: TextStyle(color: Colors.grey[600]),
+                                ),
+                              ),
+                            ],
                           );
                         },
                       ),
@@ -378,10 +391,6 @@ class _NotesScreenState extends State<NotesScreen> {
                 ),
               ),
               actions: [
-                TextButton(
-                  onPressed: isSaving ? null : () => Navigator.of(dialogContext).pop(),
-                  child: const Text('Cancel'),
-                ),
                 ElevatedButton(
                   onPressed: (controller.text.trim().isEmpty || isSaving)
                       ? null
@@ -418,7 +427,7 @@ class _NotesScreenState extends State<NotesScreen> {
                     backgroundColor: AppColors.primary,
                     foregroundColor: Colors.white,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    minimumSize: const Size(100, 44),
+                    minimumSize: const Size(double.infinity, 44),
                   ),
                   child: isSaving
                       ? const SizedBox(
@@ -430,6 +439,14 @@ class _NotesScreenState extends State<NotesScreen> {
                           ),
                         )
                       : const Text('Add Course'),
+                ),
+                const SizedBox(height: 4),
+                TextButton(
+                  onPressed: isSaving ? null : () => Navigator.of(dialogContext).pop(),
+                  child: Text(
+                    'Cancel',
+                    style: TextStyle(color: Colors.grey[600]),
+                  ),
                 ),
               ],
             );
@@ -529,10 +546,6 @@ class _NoteCardState extends State<_NoteCard>
           title: const Text('Delete Note'),
           content: Text('Are you sure you want to delete "${note.title}"? This will permanently remove the note and all associated files.'),
           actions: [
-            TextButton(
-              onPressed: () => Navigator.of(dialogContext).pop(),
-              child: const Text('Cancel'),
-            ),
             ElevatedButton(
               onPressed: () async {
                 Navigator.of(dialogContext).pop();
@@ -559,8 +572,17 @@ class _NoteCardState extends State<_NoteCard>
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.error,
                 foregroundColor: Colors.white,
+                minimumSize: const Size(double.infinity, 44),
               ),
               child: const Text('Delete'),
+            ),
+            const SizedBox(height: 4),
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: Text(
+                'Cancel',
+                style: TextStyle(color: Colors.grey[600]),
+              ),
             ),
           ],
         );

@@ -77,7 +77,7 @@ class AuthController extends ChangeNotifier {
     _clearError();
 
     try {
-      _currentUser = await _authService.signup(
+      await _authService.signup(
         name: name,
         email: email,
         university: university,
@@ -85,6 +85,7 @@ class AuthController extends ChangeNotifier {
         timeline: timeline,
         password: password,
       );
+      await logout();
     } catch (e) {
       _errorMessage = e.toString().replaceFirst('Exception: ', '');
     } finally {

@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:ai_study_companion/models/study_stats.dart';
 import 'package:ai_study_companion/models/deadline.dart';
+import 'package:ai_study_companion/models/study_task.dart';
 import 'package:ai_study_companion/core/db/database_helper.dart';
 import 'package:ai_study_companion/services/firestore_service.dart';
 import 'package:ai_study_companion/core/theme/app_colors.dart';
@@ -54,7 +55,7 @@ class DashboardController extends ChangeNotifier {
     try {
       final results = await Future.wait([
         _computeStats(uid),
-        _loadDeadlines(),
+        _loadDeadlines(uid),
       ]);
 
       _stats = results[0] as StudyStats;
@@ -129,33 +130,33 @@ class DashboardController extends ChangeNotifier {
     );
   }
 
-  /// Loads deadlines.
-  Future<List<Deadline>> _loadDeadlines() async {
-    // Deadlines remain as sample data for this phase as per prompt spec.
+  /// Loads real-time deadlines from user's active tasks in Firestore.
+  Future<List<Deadline>> _loadDeadlines(String uid) async {
+    try {
+      final tasks = await _firestoreService.fetchTasks(uid);
+      final activeTasks = tasks.where((t) => t.status != TaskStatus.done).toList();
+
+      if (activeTasks.isNotEmpty) {
+        return activeTasks.map((t) {
+          return Deadline(
+            id: t.id?.toString() ?? t.title,
+            title: t.title,
+            course: t.description ?? 'Planner Task',
+            dueDate: t.dueDateTime,
+          );
+        }).toList();
+      }
+    } catch (e) {
+      debugPrint('Error loading live deadlines: $e');
+    }
+
+    // Baseline fallback if no tasks exist yet
     return [
       Deadline(
         id: 'dl_1',
-        title: 'AI Mid-Term Exam',
-        course: 'Artificial Intelligence',
-        dueDate: DateTime.now().add(const Duration(days: 5)),
-      ),
-      Deadline(
-        id: 'dl_2',
-        title: 'OOP Project Submission',
-        course: 'Object-Oriented Programming',
-        dueDate: DateTime.now().add(const Duration(days: 2)),
-      ),
-      Deadline(
-        id: 'dl_3',
-        title: 'DSA Assignment #4',
-        course: 'Data Structures',
-        dueDate: DateTime.now().subtract(const Duration(days: 1)),
-      ),
-      Deadline(
-        id: 'dl_4',
-        title: 'Database Lab Report',
-        course: 'Database Systems',
-        dueDate: DateTime.now().add(const Duration(days: 8)),
+        title: 'Welcome to AI Study Companion',
+        course: 'General Study',
+        dueDate: DateTime.now().add(const Duration(days: 1)),
       ),
     ];
   }

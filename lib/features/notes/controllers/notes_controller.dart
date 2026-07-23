@@ -60,7 +60,7 @@ class NotesController extends ChangeNotifier {
   // Actions
   // ---------------------------------------------------------------------------
 
-  /// Loads notes from local SQLite database and custom courses from Firestore.
+  /// Loads notes from Firestore (syncing across devices) and local SQLite fallback.
   Future<void> loadNotes() async {
     final prefs = await SharedPreferences.getInstance();
     final uid = FirebaseAuth.instance.currentUser?.uid ?? prefs.getString('local_userUid');
@@ -71,8 +71,26 @@ class NotesController extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final rows = await _dbHelper.fetchNotes();
-      _notes = rows.map((row) => Note.fromMap(row)).toList();
+      // 1. Fetch local SQLite notes
+      final localRows = await _dbHelper.fetchNotes();
+      final localNotes = localRows.map((row) => Note.fromMap(row)).toList();
+
+      // 2. Fetch remote Firestore notes
+      final remoteRows = await _firestoreService.fetchNotes(uid);
+      final remoteNotes = remoteRows.map((row) => Note.fromMap(row)).toList();
+
+      // 3. Merge notes (preferring local path if present)
+      final Map<String, Note> noteMap = {};
+      for (final n in remoteNotes) {
+        noteMap[n.title] = n;
+      }
+      for (final n in localNotes) {
+        noteMap[n.title] = n;
+      }
+
+      _notes = noteMap.values.toList()
+        ..sort((a, b) => b.dateAdded.compareTo(a.dateAdded));
+
       _courses = await _firestoreService.fetchCourses(uid);
     } catch (e) {
       _errorMessage = 'Failed to load notes. Please try again.';
@@ -102,8 +120,11 @@ class NotesController extends ChangeNotifier {
     }
   }
 
-  /// Copies the file to app storage and saves the note metadata to SQLite.
+  /// Copies the file to app storage and saves the note metadata to SQLite and Firestore.
   Future<bool> uploadNote(String title, String subject, File file) async {
+    final prefs = await SharedPreferences.getInstance();
+    final uid = FirebaseAuth.instance.currentUser?.uid ?? prefs.getString('local_userUid');
+
     _isUploading = true;
     _errorMessage = null;
     notifyListeners();
@@ -112,7 +133,15 @@ class NotesController extends ChangeNotifier {
       // 1. Copy to app directory
       final localPath = await _fileService.copyToAppDirectory(file);
 
-      // 2. Save to SQLite
+      // 2. Extract text if possible for Cloud sync
+      String? textContent;
+      try {
+        if (file.path.endsWith('.txt')) {
+          textContent = await file.readAsString();
+        }
+      } catch (_) {}
+
+      // 3. Save to SQLite
       final note = Note(
         title: title,
         subject: subject,
@@ -122,7 +151,18 @@ class NotesController extends ChangeNotifier {
 
       final id = await _dbHelper.insertNote(note.toMap());
 
-      // 3. Add to local list with the auto-generated id
+      // 4. Save to Firestore if logged in
+      if (uid != null) {
+        await _firestoreService.uploadNote(
+          uid: uid,
+          title: title,
+          subject: subject,
+          localFilePath: localPath,
+          fileContent: textContent,
+        );
+      }
+
+      // 5. Add to local list with the auto-generated id
       final savedNote = Note(
         id: id,
         title: note.title,
@@ -144,8 +184,11 @@ class NotesController extends ChangeNotifier {
     }
   }
 
-  /// Deletes a note from SQLite database and updates local state.
+  /// Deletes a note from SQLite database and Cloud Firestore.
   Future<bool> deleteNote(int id) async {
+    final prefs = await SharedPreferences.getInstance();
+    final uid = FirebaseAuth.instance.currentUser?.uid ?? prefs.getString('local_userUid');
+
     try {
       final index = _notes.indexWhere((n) => n.id == id);
       if (index != -1) {
@@ -153,6 +196,11 @@ class NotesController extends ChangeNotifier {
         // Delete SQLite record
         await _dbHelper.deleteNote(id);
         
+        // Delete Firestore record
+        if (uid != null) {
+          await _firestoreService.deleteNote(uid, note.title);
+        }
+
         // Try deleting local file
         try {
           final file = File(note.localFilePath);
