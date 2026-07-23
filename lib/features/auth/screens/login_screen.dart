@@ -7,8 +7,10 @@ import 'package:ai_study_companion/core/widgets/app_text_field.dart';
 import 'package:ai_study_companion/core/widgets/loading_button.dart';
 import 'package:ai_study_companion/features/auth/controllers/auth_controller.dart';
 
-/// A minimalist login screen with a gradient logo area, email & password
-/// fields, and a [LoadingButton] that disables until the form is valid.
+/// Minimalist, realistic login screen.
+///
+/// Features an always-active Login button, detailed inline field validation,
+/// and clear error feedback for invalid accounts or incorrect credentials.
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
 
@@ -23,7 +25,6 @@ class _LoginScreenState extends State<LoginScreen>
   final _passwordController = TextEditingController();
 
   bool _obscurePassword = true;
-  bool _isFormValid = false;
 
   late final AnimationController _fadeController;
   late final Animation<double> _fadeAnimation;
@@ -45,9 +46,6 @@ class _LoginScreenState extends State<LoginScreen>
       parent: _fadeController,
       curve: Curves.easeOut,
     );
-
-    _emailController.addListener(_validateForm);
-    _passwordController.addListener(_validateForm);
   }
 
   @override
@@ -59,26 +57,29 @@ class _LoginScreenState extends State<LoginScreen>
   }
 
   // -------------------------------------------------------------------------
-  // Validation
+  // Validation Rules
   // -------------------------------------------------------------------------
 
-  void _validateForm() {
-    final valid = _formKey.currentState?.validate() ?? false;
-    if (valid != _isFormValid) {
-      setState(() => _isFormValid = valid);
-    }
-  }
-
   String? _validateEmail(String? value) {
-    if (value == null || value.trim().isEmpty) return 'Email is required';
-    final emailRegex = RegExp(r'^[\w\-.]+@([\w\-]+\.)+[\w\-]{2,4}$');
-    if (!emailRegex.hasMatch(value.trim())) return 'Enter a valid email';
+    if (value == null || value.trim().isEmpty) {
+      return 'Email is required. Please enter your email.';
+    }
+    final emailRegex = RegExp(
+      r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$',
+    );
+    if (!emailRegex.hasMatch(value.trim())) {
+      return 'Please enter a valid email address (e.g. user@example.com).';
+    }
     return null;
   }
 
   String? _validatePassword(String? value) {
-    if (value == null || value.isEmpty) return 'Password is required';
-    if (value.length < 6) return 'Must be at least 6 characters';
+    if (value == null || value.isEmpty) {
+      return 'Password is required. Please enter your password.';
+    }
+    if (value.length < 6) {
+      return 'Password must be at least 6 characters.';
+    }
     return null;
   }
 
@@ -87,10 +88,13 @@ class _LoginScreenState extends State<LoginScreen>
   // -------------------------------------------------------------------------
 
   Future<void> _handleLogin() async {
-    if (!(_formKey.currentState?.validate() ?? false)) return;
-
+    // Clear previous auth errors
     final controller = context.read<AuthController>();
     controller.clearError();
+
+    // Trigger full form validation
+    final isValid = _formKey.currentState?.validate() ?? false;
+    if (!isValid) return;
 
     await controller.login(
       _emailController.text.trim(),
@@ -104,10 +108,18 @@ class _LoginScreenState extends State<LoginScreen>
     } else if (controller.errorMessage != null) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(controller.errorMessage!),
+          content: Row(
+            children: [
+              const Icon(Icons.error_outline, color: Colors.white, size: 20),
+              const SizedBox(width: 10),
+              Expanded(child: Text(controller.errorMessage!)),
+            ],
+          ),
           backgroundColor: AppColors.error,
           behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
           margin: const EdgeInsets.all(16),
         ),
       );
@@ -120,7 +132,9 @@ class _LoginScreenState extends State<LoginScreen>
 
   @override
   Widget build(BuildContext context) {
-    final isFallback = context.read<AuthController>().isFallbackMode;
+    final authController = context.watch<AuthController>();
+    final isFallback = authController.isFallbackMode;
+    final errorMessage = authController.errorMessage;
 
     return Scaffold(
       backgroundColor: AppColors.surface,
@@ -138,10 +152,14 @@ class _LoginScreenState extends State<LoginScreen>
                     const SizedBox(height: 16),
                   ],
                   _buildLogoArea(),
-                  const SizedBox(height: 48),
+                  const SizedBox(height: 40),
+                  if (errorMessage != null) ...[
+                    _buildErrorBanner(errorMessage),
+                    const SizedBox(height: 20),
+                  ],
                   _buildForm(),
                   const SizedBox(height: 32),
-                  _buildLoginButton(),
+                  _buildLoginButton(authController),
                   const SizedBox(height: 24),
                   _buildSignUpLink(),
                 ],
@@ -153,7 +171,7 @@ class _LoginScreenState extends State<LoginScreen>
     );
   }
 
-  /// Gradient container with book icon and app name.
+  /// Gradient container with book icon and app title.
   Widget _buildLogoArea() {
     return Column(
       children: [
@@ -200,6 +218,34 @@ class _LoginScreenState extends State<LoginScreen>
     );
   }
 
+  /// Error banner displayed when authentication fails.
+  Widget _buildErrorBanner(String message) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: AppColors.error.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.error.withValues(alpha: 0.3)),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.error_outline, color: AppColors.error, size: 20),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              message,
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: AppColors.error,
+                    fontWeight: FontWeight.w600,
+                  ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   /// Email & password fields wrapped in a validated [Form].
   Widget _buildForm() {
     return Form(
@@ -223,7 +269,7 @@ class _LoginScreenState extends State<LoginScreen>
             obscureText: _obscurePassword,
             textInputAction: TextInputAction.done,
             validator: _validatePassword,
-            onFieldSubmitted: (_) => _isFormValid ? _handleLogin() : null,
+            onFieldSubmitted: (_) => _handleLogin(),
             suffixIcon: IconButton(
               icon: Icon(
                 _obscurePassword
@@ -242,17 +288,13 @@ class _LoginScreenState extends State<LoginScreen>
     );
   }
 
-  /// Login CTA – disabled until the form passes validation.
-  Widget _buildLoginButton() {
-    return Consumer<AuthController>(
-      builder: (context, auth, _) {
-        return LoadingButton(
-          text: 'Login',
-          icon: Icons.login_rounded,
-          isLoading: auth.isLoading,
-          onPressed: _isFormValid ? _handleLogin : null,
-        );
-      },
+  /// Always-active Login CTA button.
+  Widget _buildLoginButton(AuthController auth) {
+    return LoadingButton(
+      text: 'Login',
+      icon: Icons.login_rounded,
+      isLoading: auth.isLoading,
+      onPressed: auth.isLoading ? null : _handleLogin,
     );
   }
 

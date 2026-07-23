@@ -116,17 +116,27 @@ class FirebaseAuthService {
         timeline: '2023–2027',
       );
     } on FirebaseAuthException catch (e) {
-      String message = 'Authentication failed.';
-      if (e.code == 'user-not-found' || e.code == 'wrong-password' || e.code == 'invalid-credential') {
-        message = 'Invalid email or password.';
+      String message = 'Authentication failed. Please try again.';
+      if (e.code == 'user-not-found') {
+        message = 'No account found with this email. Please check your email or sign up.';
+      } else if (e.code == 'wrong-password') {
+        message = 'Incorrect password. Please check your password and try again.';
+      } else if (e.code == 'invalid-credential') {
+        message = 'Incorrect email or password. Please verify your credentials and try again.';
       } else if (e.code == 'invalid-email') {
-        message = 'The email address is badly formatted.';
+        message = 'The email address format is invalid.';
       } else if (e.code == 'user-disabled') {
-        message = 'This user account has been disabled.';
+        message = 'This user account has been disabled. Please contact support.';
+      } else if (e.code == 'too-many-requests') {
+        message = 'Too many failed login attempts. Please wait a moment and try again.';
+      } else if (e.code == 'network-request-failed') {
+        message = 'Network error. Please check your internet connection and try again.';
+      } else if (e.message != null && e.message!.isNotEmpty) {
+        message = e.message!;
       }
       throw Exception(message);
     } catch (e) {
-      throw Exception('An unexpected error occurred during login.');
+      throw Exception('An unexpected error occurred during login. Please try again.');
     }
   }
 
