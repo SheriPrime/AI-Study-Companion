@@ -13,6 +13,7 @@ import 'package:ai_study_companion/models/quiz.dart';
 import 'package:ai_study_companion/models/youtube_video.dart';
 import 'package:ai_study_companion/features/notes/controllers/ai_hub_controller.dart';
 import 'package:ai_study_companion/features/notes/controllers/notes_controller.dart';
+import 'package:ai_study_companion/features/auth/controllers/auth_controller.dart';
 
 /// AI Hub — the detail screen for a single note.
 ///
@@ -858,13 +859,20 @@ class _QuizSection extends StatelessWidget {
             backgroundColor: AppColors.quizPurple,
           )
         else
-          LoadingButton(
-            text: 'Submit Answers',
-            icon: Icons.check_circle_outline,
-            onPressed: controller.allAnswered
-                ? controller.submitQuiz
-                : null,
-            backgroundColor: AppColors.quizPurple,
+          Builder(
+            builder: (ctx) {
+              return LoadingButton(
+                text: 'Submit Answers',
+                icon: Icons.check_circle_outline,
+                onPressed: controller.allAnswered
+                    ? () {
+                        final uid = ctx.read<AuthController>().currentUser?.id;
+                        controller.submitQuiz(uid);
+                      }
+                    : null,
+                backgroundColor: AppColors.quizPurple,
+              );
+            },
           ),
 
         const SizedBox(height: 24),

@@ -52,26 +52,16 @@ class ProgressController extends ChangeNotifier {
       final subjectData = await _dbHelper.getNotesCountBySubject();
       final progressData = await _firestoreService.getProgress(uid);
 
-      // Build weekly data from Firestore or default baseline
+      // Build weekly data from real recorded hours or 0.0 for unrecorded days
       final Map<String, dynamic>? hoursMap = progressData != null
           ? progressData['weekly_hours'] as Map<String, dynamic>?
           : null;
 
       final dayLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-      final defaultHours = {
-        'Mon': 2.5,
-        'Tue': 1.8,
-        'Wed': 3.2,
-        'Thu': 2.0,
-        'Fri': 4.1,
-        'Sat': 1.5,
-        'Sun': 3.0,
-      };
-
       final weeklyData = dayLabels.map((day) {
         final hours = hoursMap != null && hoursMap.containsKey(day)
             ? (hoursMap[day] as num).toDouble()
-            : (defaultHours[day] ?? 0.0);
+            : 0.0;
         return DailyStudyData(day: day, hours: hours);
       }).toList();
 
@@ -86,13 +76,13 @@ class ProgressController extends ChangeNotifier {
         );
       }).toList();
 
-      // Calculate streak and progress from Firestore progress collection
-      int streak = 1;
+      // Calculate streak and progress from Firestore/Local progress tracking
+      int streak = 0;
       int quizzesTaken = 0;
       double dailyGoalProgress = 0.0;
 
       if (progressData != null) {
-        streak = progressData['streak'] as int? ?? 1;
+        streak = progressData['streak'] as int? ?? 0;
         quizzesTaken = progressData['quizzes_taken'] as int? ?? 0;
         dailyGoalProgress = (progressData['daily_goal_progress'] as num?)?.toDouble() ?? 0.0;
       }

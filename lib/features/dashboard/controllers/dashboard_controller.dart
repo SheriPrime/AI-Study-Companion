@@ -74,27 +74,18 @@ class DashboardController extends ChangeNotifier {
     final notesCount = await _dbHelper.getNotesCount();
     final subjectData = await _dbHelper.getNotesCountBySubject();
     final progressData = await _firestoreService.getProgress(uid);
+    final tasks = await _firestoreService.fetchTasks(uid);
 
-    // Build weekly data from Firestore or default baseline
+    // Build weekly data from real recorded hours or 0.0 for unrecorded days
     final Map<String, dynamic>? hoursMap = progressData != null
         ? progressData['weekly_hours'] as Map<String, dynamic>?
         : null;
 
     final dayLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-    final defaultHours = {
-      'Mon': 2.5,
-      'Tue': 1.8,
-      'Wed': 3.2,
-      'Thu': 2.0,
-      'Fri': 4.1,
-      'Sat': 1.5,
-      'Sun': 3.0,
-    };
-
     final weeklyData = dayLabels.map((day) {
       final hours = hoursMap != null && hoursMap.containsKey(day)
           ? (hoursMap[day] as num).toDouble()
-          : (defaultHours[day] ?? 0.0);
+          : 0.0;
       return DailyStudyData(day: day, hours: hours);
     }).toList();
 
@@ -109,15 +100,27 @@ class DashboardController extends ChangeNotifier {
       );
     }).toList();
 
-    // Calculate streak and progress from Firestore progress collection
-    int streak = 1;
+    // Calculate streak, quizzes, and daily goal progress from real activity
+    int streak = 0;
     int quizzesTaken = 0;
     double dailyGoalProgress = 0.0;
 
     if (progressData != null) {
-      streak = progressData['streak'] as int? ?? 1;
+      streak = progressData['streak'] as int? ?? 0;
       quizzesTaken = progressData['quizzes_taken'] as int? ?? 0;
       dailyGoalProgress = (progressData['daily_goal_progress'] as num?)?.toDouble() ?? 0.0;
+    }
+
+    // Compute real daily goal progress based on today's tasks if tasks exist
+    final now = DateTime.now();
+    final todayTasks = tasks.where((t) {
+      final d = t.dueDateTime;
+      return d.year == now.year && d.month == now.month && d.day == now.day;
+    }).toList();
+
+    if (todayTasks.isNotEmpty) {
+      final completedToday = todayTasks.where((t) => t.status == TaskStatus.done).length;
+      dailyGoalProgress = completedToday / todayTasks.length;
     }
 
     return StudyStats(
@@ -130,7 +133,7 @@ class DashboardController extends ChangeNotifier {
     );
   }
 
-  /// Loads real-time deadlines from user's active tasks in Firestore.
+  /// Loads real-time deadlines from user's active tasks in Firestore/SQLite.
   Future<List<Deadline>> _loadDeadlines(String uid) async {
     try {
       final tasks = await _firestoreService.fetchTasks(uid);
@@ -141,7 +144,9 @@ class DashboardController extends ChangeNotifier {
           return Deadline(
             id: t.id?.toString() ?? t.title,
             title: t.title,
-            course: t.description ?? 'Planner Task',
+            course: (t.description != null && t.description!.trim().isNotEmpty)
+                ? t.description!
+                : 'Study Task',
             dueDate: t.dueDateTime,
           );
         }).toList();
@@ -150,14 +155,7 @@ class DashboardController extends ChangeNotifier {
       debugPrint('Error loading live deadlines: $e');
     }
 
-    // Baseline fallback if no tasks exist yet
-    return [
-      Deadline(
-        id: 'dl_1',
-        title: 'Welcome to AI Study Companion',
-        course: 'General Study',
-        dueDate: DateTime.now().add(const Duration(days: 1)),
-      ),
-    ];
+    // Return empty list if no active tasks exist (triggers real empty state UI)
+    return [];
   }
 }

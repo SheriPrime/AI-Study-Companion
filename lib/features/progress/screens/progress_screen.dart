@@ -219,6 +219,40 @@ class _ProgressScreenState extends State<ProgressScreen> {
     final totalNotes =
         stats.subjectDistribution.fold<int>(0, (sum, s) => sum + s.count);
 
+    if (totalNotes == 0 || stats.subjectDistribution.isEmpty) {
+      return _SectionCard(
+        child: Column(
+          children: [
+            Row(
+              children: [
+                const Icon(Icons.pie_chart_rounded,
+                    color: AppColors.accent, size: 22),
+                const SizedBox(width: 8),
+                Text(
+                  'Notes by Subject',
+                  style: theme.textTheme.headlineSmall,
+                ),
+              ],
+            ),
+            const SizedBox(height: 24),
+            Icon(Icons.description_outlined, size: 44, color: AppColors.textHint),
+            const SizedBox(height: 12),
+            Text(
+              'No notes uploaded yet',
+              style: theme.textTheme.titleMedium?.copyWith(
+                    color: AppColors.textSecondary,
+                  ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'Upload study notes to see a breakdown by subject.',
+              style: theme.textTheme.bodySmall,
+            ),
+          ],
+        ),
+      );
+    }
+
     return _SectionCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

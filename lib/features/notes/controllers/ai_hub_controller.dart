@@ -5,6 +5,7 @@ import 'package:ai_study_companion/models/youtube_video.dart';
 import 'package:ai_study_companion/services/gemini_service.dart';
 import 'package:ai_study_companion/services/local_file_service.dart';
 import 'package:ai_study_companion/services/youtube_service.dart';
+import 'package:ai_study_companion/services/firestore_service.dart';
 
 /// Controller for the AI Hub (note detail) screen.
 ///
@@ -14,8 +15,14 @@ class AiHubController extends ChangeNotifier {
   final GeminiService _geminiService;
   final LocalFileService _fileService;
   final YouTubeService _youtubeService;
+  final FirestoreService _firestoreService;
 
-  AiHubController(this._geminiService, this._fileService, this._youtubeService);
+  AiHubController(
+    this._geminiService,
+    this._fileService,
+    this._youtubeService,
+    this._firestoreService,
+  );
 
   // ---------------------------------------------------------------------------
   // State
@@ -153,10 +160,17 @@ class AiHubController extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Submits the quiz and reveals correct/incorrect answers.
-  void submitQuiz() {
+  /// Submits the quiz, reveals correct/incorrect answers, and records stats.
+  Future<void> submitQuiz([String? uid]) async {
     _showResults = true;
     notifyListeners();
+    if (uid != null && uid.isNotEmpty) {
+      try {
+        await _firestoreService.incrementQuizzesTaken(uid);
+      } catch (e) {
+        debugPrint('AiHubController.submitQuiz stat update error: $e');
+      }
+    }
   }
 
   /// Clears quiz answers and results for a retake.

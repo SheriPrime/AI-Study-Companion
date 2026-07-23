@@ -179,14 +179,22 @@ class FirestoreService {
     if (isFallbackMode) {
       final prefs = await SharedPreferences.getInstance();
       return {
-        'streak': prefs.getInt('local_streak') ?? 7,
-        'quizzes_taken': prefs.getInt('local_quizzes') ?? 12,
-        'daily_goal_progress': prefs.getDouble('local_goal') ?? 0.72,
+        'streak': prefs.getInt('local_streak') ?? 0,
+        'quizzes_taken': prefs.getInt('local_quizzes') ?? 0,
+        'daily_goal_progress': prefs.getDouble('local_goal') ?? 0.0,
       };
     }
 
     final doc = await _db.collection('progress').doc(uid).get();
     return doc.data();
+  }
+
+  /// Increments the quiz count for a user by 1 when a quiz is submitted.
+  Future<void> incrementQuizzesTaken(String uid) async {
+    final currentProgress = await getProgress(uid);
+    final currentQuizzes = (currentProgress?['quizzes_taken'] as int?) ?? 0;
+    final newCount = currentQuizzes + 1;
+    await updateProgress(uid, quizzesTaken: newCount);
   }
 
   /// Updates user streak or daily goal progress.

@@ -80,8 +80,8 @@ class _ShellScreenState extends State<ShellScreen> {
             unselectedFontSize: 12,
             items: const [
               BottomNavigationBarItem(
-                icon: Icon(Icons.dashboard_rounded),
-                activeIcon: Icon(Icons.dashboard_rounded),
+                icon: Icon(Icons.home_outlined),
+                activeIcon: Icon(Icons.home_rounded),
                 label: 'Home',
               ),
               BottomNavigationBarItem(

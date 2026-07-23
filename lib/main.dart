@@ -129,6 +129,7 @@ class AIStudyCompanionApp extends StatelessWidget {
             ctx.read<GeminiService>(),
             ctx.read<LocalFileService>(),
             ctx.read<YouTubeService>(),
+            ctx.read<FirestoreService>(),
           ),
         ),
         ChangeNotifierProvider<PlannerController>(
